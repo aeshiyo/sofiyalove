@@ -7,7 +7,7 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-local guiName = "SonyaGUI_V5"
+local guiName = "SonyaGUI_V7"
 
 -- Определение родителя
 local parent = nil
@@ -46,22 +46,30 @@ Instance.new("UICorner", RestoreBtn).CornerRadius = UDim.new(0, 4)
 local RestoreStroke = Instance.new("UIStroke", RestoreBtn)
 RestoreStroke.Color = Color3.fromRGB(68, 68, 68)
 
--- === Мобильная экранная кнопка (Floating Button) ===
-local MobileBtn = Instance.new("TextButton")
-MobileBtn.Name = "MobileFlyBtn"
-MobileBtn.Size = UDim2.new(0, 60, 0, 60)
-MobileBtn.Position = UDim2.new(1, -80, 0.5, 0) 
-MobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-MobileBtn.BackgroundTransparency = 0.3
-MobileBtn.Text = "+ Fly"
-MobileBtn.Font = Enum.Font.RobotoMono
-MobileBtn.TextSize = 14
-MobileBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-MobileBtn.Visible = false
-MobileBtn.Active = true
-MobileBtn.Parent = ScreenGui
-Instance.new("UICorner", MobileBtn).CornerRadius = UDim.new(0, 30)
-Instance.new("UIStroke", MobileBtn).Color = Color3.fromRGB(68, 68, 68)
+-- Функция создания мобильных кнопок
+local function createMobileBtn(name, text, yOffset)
+    local btn = Instance.new("TextButton")
+    btn.Name = "Mobile" .. name .. "Btn"
+    btn.Size = UDim2.new(0, 60, 0, 60)
+    btn.Position = UDim2.new(1, -80, 0.5, yOffset) 
+    btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    btn.BackgroundTransparency = 0.3
+    btn.Text = text
+    btn.Font = Enum.Font.RobotoMono
+    btn.TextSize = 12
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.Visible = false
+    btn.Active = true
+    btn.Parent = ScreenGui
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 30)
+    Instance.new("UIStroke", btn).Color = Color3.fromRGB(68, 68, 68)
+    return btn
+end
+
+local FlyMobileBtn = createMobileBtn("Fly", "+ Fly", -105)
+local NoclipMobileBtn = createMobileBtn("Noclip", "Noclip", -35)
+local SpeedMobileBtn = createMobileBtn("Speed", "Speed", 35)
+local SitMobileBtn = createMobileBtn("Sit", "Sit", 105)
 
 -- === Основное окно ===
 local MainWindow = Instance.new("Frame")
@@ -127,7 +135,6 @@ CloseBtn.Parent = ControlsFrame
 MinBtn.Parent = ControlsFrame
 FullBtn.Parent = ControlsFrame
 
--- Логотип
 local Logo = Instance.new("TextLabel")
 Logo.Size = UDim2.new(1, 0, 0, 60)
 Logo.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
@@ -141,7 +148,6 @@ Logo.Parent = LeftPanel
 Instance.new("UICorner", Logo).CornerRadius = UDim.new(0, 6)
 Instance.new("UIStroke", Logo).Color = Color3.fromRGB(68, 68, 68)
 
--- Вкладка mine
 local TabsFrame = Instance.new("Frame")
 TabsFrame.Size = UDim2.new(1, 0, 1, -115)
 TabsFrame.BackgroundTransparency = 1
@@ -160,7 +166,6 @@ TabMine.Parent = TabsFrame
 Instance.new("UICorner", TabMine).CornerRadius = UDim.new(0, 6)
 Instance.new("UIStroke", TabMine).Color = Color3.fromRGB(80, 80, 80)
 
--- Разделитель
 local Separator = Instance.new("Frame")
 Separator.Size = UDim2.new(0, 2, 1, 0)
 Separator.Position = UDim2.new(0, 220, 0, 0)
@@ -185,152 +190,180 @@ ContentScroll.Position = UDim2.new(0, 20, 0, 20)
 ContentScroll.BackgroundTransparency = 1
 ContentScroll.ScrollBarThickness = 4
 ContentScroll.BorderSizePixel = 0
+-- Автоматическая прокрутка, когда функций становится много
+ContentScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ContentScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 ContentScroll.Parent = RightPanel
 local ContentLayout = Instance.new("UIListLayout", ContentScroll)
 ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ContentLayout.Padding = UDim.new(0, 10)
 
--- ==========================================
--- === СОЗДАНИЕ ФУНКЦИИ FLY С НАСТРОЙКАМИ ===
--- ==========================================
+-- Глобальная функция создания модулей функций
+local function createFeatureModule(title, layoutOrder, hasSlider, defaultVal, minVal, maxVal)
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, -10, 0, 50)
+    Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    Frame.BackgroundTransparency = 0.5
+    Frame.LayoutOrder = layoutOrder
+    Frame.Parent = ContentScroll
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", Frame).Color = Color3.fromRGB(50, 50, 50)
 
-local FlyFrame = Instance.new("Frame")
-FlyFrame.Size = UDim2.new(1, -10, 0, 50)
-FlyFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-FlyFrame.BackgroundTransparency = 0.5
-FlyFrame.LayoutOrder = 1
-FlyFrame.Parent = ContentScroll
-Instance.new("UICorner", FlyFrame).CornerRadius = UDim.new(0, 8)
-Instance.new("UIStroke", FlyFrame).Color = Color3.fromRGB(50, 50, 50)
+    local Txt = Instance.new("TextLabel")
+    Txt.Size = UDim2.new(0, 200, 1, 0)
+    Txt.Position = UDim2.new(0, 15, 0, 0)
+    Txt.BackgroundTransparency = 1
+    Txt.Text = title
+    Txt.Font = Enum.Font.RobotoMono
+    Txt.TextSize = 16
+    Txt.TextColor3 = Color3.fromRGB(220, 220, 220)
+    Txt.TextXAlignment = Enum.TextXAlignment.Left
+    Txt.Parent = Frame
 
-local FlyTitle = Instance.new("TextLabel")
-FlyTitle.Size = UDim2.new(0, 150, 1, 0)
-FlyTitle.Position = UDim2.new(0, 15, 0, 0)
-FlyTitle.BackgroundTransparency = 1
-FlyTitle.Text = "Fly (Полет)"
-FlyTitle.Font = Enum.Font.RobotoMono
-FlyTitle.TextSize = 16
-FlyTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
-FlyTitle.TextXAlignment = Enum.TextXAlignment.Left
-FlyTitle.Parent = FlyFrame
+    local Gear = Instance.new("TextButton")
+    Gear.Size = UDim2.new(0, 30, 0, 30)
+    Gear.Position = UDim2.new(1, -150, 0.5, -15)
+    Gear.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Gear.Text = "⚙"
+    Gear.Font = Enum.Font.RobotoMono
+    Gear.TextSize = 18
+    Gear.TextColor3 = Color3.fromRGB(150, 150, 150)
+    Gear.Parent = Frame
+    Instance.new("UICorner", Gear).CornerRadius = UDim.new(0, 6)
+    Instance.new("UIStroke", Gear).Color = Color3.fromRGB(60, 60, 60)
 
-local GearBtn = Instance.new("TextButton")
-GearBtn.Size = UDim2.new(0, 30, 0, 30)
-GearBtn.Position = UDim2.new(1, -150, 0.5, -15)
-GearBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-GearBtn.Text = "⚙"
-GearBtn.Font = Enum.Font.RobotoMono
-GearBtn.TextSize = 18
-GearBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
-GearBtn.Parent = FlyFrame
-Instance.new("UICorner", GearBtn).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", GearBtn).Color = Color3.fromRGB(60, 60, 60)
+    local Bind = Instance.new("TextButton")
+    Bind.Size = UDim2.new(0, 60, 0, 30)
+    Bind.Position = UDim2.new(1, -110, 0.5, -15)
+    Bind.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Bind.Text = "[NONE]"
+    Bind.Font = Enum.Font.RobotoMono
+    Bind.TextSize = 12
+    Bind.TextColor3 = Color3.fromRGB(150, 150, 150)
+    Bind.Parent = Frame
+    Instance.new("UICorner", Bind).CornerRadius = UDim.new(0, 6)
+    Instance.new("UIStroke", Bind).Color = Color3.fromRGB(60, 60, 60)
 
-local BindBtn = Instance.new("TextButton")
-BindBtn.Size = UDim2.new(0, 60, 0, 30)
-BindBtn.Position = UDim2.new(1, -110, 0.5, -15)
-BindBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-BindBtn.Text = "[NONE]"
-BindBtn.Font = Enum.Font.RobotoMono
-BindBtn.TextSize = 12
-BindBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
-BindBtn.Parent = FlyFrame
-Instance.new("UICorner", BindBtn).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", BindBtn).Color = Color3.fromRGB(60, 60, 60)
+    local Toggle = Instance.new("TextButton")
+    Toggle.Size = UDim2.new(0, 30, 0, 30)
+    Toggle.Position = UDim2.new(1, -40, 0.5, -15)
+    Toggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+    Toggle.Text = ""
+    Toggle.Parent = Frame
+    Instance.new("UICorner", Toggle).CornerRadius = UDim.new(0, 6)
+    local TStroke = Instance.new("UIStroke", Toggle)
+    TStroke.Color = Color3.fromRGB(150, 50, 50)
 
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Size = UDim2.new(0, 30, 0, 30)
-ToggleBtn.Position = UDim2.new(1, -40, 0.5, -15)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
-ToggleBtn.Text = ""
-ToggleBtn.Parent = FlyFrame
-Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
-local ToggleStroke = Instance.new("UIStroke", ToggleBtn)
-ToggleStroke.Color = Color3.fromRGB(150, 50, 50)
+    local Settings = Instance.new("Frame")
+    Settings.Size = UDim2.new(1, -10, 0, hasSlider and 110 or 60)
+    Settings.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+    Settings.BackgroundTransparency = 0.5
+    Settings.Visible = false
+    Settings.LayoutOrder = layoutOrder + 1
+    Settings.Parent = ContentScroll
+    Instance.new("UICorner", Settings).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", Settings).Color = Color3.fromRGB(40, 40, 40)
 
--- Панель настроек Fly
-local SettingsFrame = Instance.new("Frame")
-SettingsFrame.Size = UDim2.new(1, -10, 0, 110) -- Увеличил высоту для слайдера
-SettingsFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
-SettingsFrame.BackgroundTransparency = 0.5
-SettingsFrame.Visible = false
-SettingsFrame.LayoutOrder = 2
-SettingsFrame.Parent = ContentScroll
-Instance.new("UICorner", SettingsFrame).CornerRadius = UDim.new(0, 8)
-Instance.new("UIStroke", SettingsFrame).Color = Color3.fromRGB(40, 40, 40)
+    Gear.MouseButton1Click:Connect(function() Settings.Visible = not Settings.Visible end)
+    
+    local SliderBtn, SliderFill, SpeedLabel, BoolBtn
+    if hasSlider then
+        SpeedLabel = Instance.new("TextLabel")
+        SpeedLabel.Size = UDim2.new(0, 200, 0, 20)
+        SpeedLabel.Position = UDim2.new(0, 15, 0, 10)
+        SpeedLabel.BackgroundTransparency = 1
+        SpeedLabel.Text = "Value: " .. defaultVal
+        SpeedLabel.Font = Enum.Font.RobotoMono
+        SpeedLabel.TextSize = 14
+        SpeedLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+        SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+        SpeedLabel.Parent = Settings
 
--- Настройка скорости (Слайдер)
-local flySpeed = 50
-local minSpeed = 10
-local maxSpeed = 200
+        local SliderBg = Instance.new("Frame")
+        SliderBg.Size = UDim2.new(0, 200, 0, 6)
+        SliderBg.Position = UDim2.new(0, 15, 0, 35)
+        SliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        SliderBg.BorderSizePixel = 0
+        SliderBg.Parent = Settings
+        Instance.new("UICorner", SliderBg).CornerRadius = UDim.new(1, 0)
 
-local SpeedLabel = Instance.new("TextLabel")
-SpeedLabel.Size = UDim2.new(0, 200, 0, 20)
-SpeedLabel.Position = UDim2.new(0, 15, 0, 10)
-SpeedLabel.BackgroundTransparency = 1
-SpeedLabel.Text = "Fly Speed: " .. flySpeed
-SpeedLabel.Font = Enum.Font.RobotoMono
-SpeedLabel.TextSize = 14
-SpeedLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
-SpeedLabel.Parent = SettingsFrame
+        SliderFill = Instance.new("Frame")
+        SliderFill.Size = UDim2.new((defaultVal - minVal)/(maxVal - minVal), 0, 1, 0)
+        SliderFill.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+        SliderFill.BorderSizePixel = 0
+        SliderFill.Parent = SliderBg
+        Instance.new("UICorner", SliderFill).CornerRadius = UDim.new(1, 0)
 
-local SliderBg = Instance.new("Frame")
-SliderBg.Size = UDim2.new(0, 200, 0, 6)
-SliderBg.Position = UDim2.new(0, 15, 0, 35)
-SliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-SliderBg.BorderSizePixel = 0
-SliderBg.Parent = SettingsFrame
-Instance.new("UICorner", SliderBg).CornerRadius = UDim.new(1, 0)
+        SliderBtn = Instance.new("TextButton")
+        SliderBtn.Size = UDim2.new(1, 0, 1, 20)
+        SliderBtn.Position = UDim2.new(0, 0, 0.5, 0)
+        SliderBtn.AnchorPoint = Vector2.new(0, 0.5)
+        SliderBtn.BackgroundTransparency = 1
+        SliderBtn.Text = ""
+        SliderBtn.Parent = SliderBg
+        
+        local MLabel = Instance.new("TextLabel")
+        MLabel.Size = UDim2.new(0, 200, 0, 30)
+        MLabel.Position = UDim2.new(0, 15, 0, 65)
+        MLabel.BackgroundTransparency = 1
+        MLabel.Text = "Show Mobile Button:"
+        MLabel.Font = Enum.Font.RobotoMono
+        MLabel.TextSize = 14
+        MLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+        MLabel.TextXAlignment = Enum.TextXAlignment.Left
+        MLabel.Parent = Settings
+        
+        BoolBtn = Instance.new("TextButton")
+        BoolBtn.Size = UDim2.new(0, 60, 0, 30)
+        BoolBtn.Position = UDim2.new(1, -70, 0, 65)
+        BoolBtn.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+        BoolBtn.Text = "False"
+        BoolBtn.Font = Enum.Font.RobotoMono
+        BoolBtn.TextSize = 14
+        BoolBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        BoolBtn.Parent = Settings
+        Instance.new("UICorner", BoolBtn).CornerRadius = UDim.new(0, 6)
+        Instance.new("UIStroke", BoolBtn).Color = Color3.fromRGB(60, 60, 60)
+    else
+        local MLabel = Instance.new("TextLabel")
+        MLabel.Size = UDim2.new(0, 200, 0, 30)
+        MLabel.Position = UDim2.new(0, 15, 0, 15)
+        MLabel.BackgroundTransparency = 1
+        MLabel.Text = "Show Mobile Button:"
+        MLabel.Font = Enum.Font.RobotoMono
+        MLabel.TextSize = 14
+        MLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+        MLabel.TextXAlignment = Enum.TextXAlignment.Left
+        MLabel.Parent = Settings
+        
+        BoolBtn = Instance.new("TextButton")
+        BoolBtn.Size = UDim2.new(0, 60, 0, 30)
+        BoolBtn.Position = UDim2.new(1, -70, 0, 15)
+        BoolBtn.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+        BoolBtn.Text = "False"
+        BoolBtn.Font = Enum.Font.RobotoMono
+        BoolBtn.TextSize = 14
+        BoolBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        BoolBtn.Parent = Settings
+        Instance.new("UICorner", BoolBtn).CornerRadius = UDim.new(0, 6)
+        Instance.new("UIStroke", BoolBtn).Color = Color3.fromRGB(60, 60, 60)
+    end
 
-local SliderFill = Instance.new("Frame")
-local initialFill = (flySpeed - minSpeed) / (maxSpeed - minSpeed)
-SliderFill.Size = UDim2.new(initialFill, 0, 1, 0)
-SliderFill.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-SliderFill.BorderSizePixel = 0
-SliderFill.Parent = SliderBg
-Instance.new("UICorner", SliderFill).CornerRadius = UDim.new(1, 0)
+    return Toggle, TStroke, Bind, BoolBtn, SliderBtn, SliderFill, SpeedLabel, Settings
+end
 
-local SliderBtn = Instance.new("TextButton")
-SliderBtn.Size = UDim2.new(1, 0, 1, 20)
-SliderBtn.Position = UDim2.new(0, 0, 0.5, 0)
-SliderBtn.AnchorPoint = Vector2.new(0, 0.5)
-SliderBtn.BackgroundTransparency = 1
-SliderBtn.Text = ""
-SliderBtn.Parent = SliderBg
+-- Создание модулей
+local FlyToggle, FlyStroke, FlyBindBtn, FlyBoolBtn, FlySlider, FlyFill, FlyLabel = createFeatureModule("Fly (Полет)", 1, true, 50, 10, 200)
+local NoclipToggle, NoclipStroke, NoclipBindBtn, NoclipBoolBtn = createFeatureModule("Noclip (Сквозь стены)", 3, false)
+local SpeedToggle, SpeedStroke, SpeedBindBtn, SpeedBoolBtn, SpeedSlider, SpeedFill, SpeedLabel = createFeatureModule("Speedhack (Скорость)", 5, true, 50, 16, 250)
+local SitToggle, SitStroke, SitBindBtn, SitBoolBtn = createFeatureModule("Sit (Сесть/Встать)", 7, false)
 
--- Мобильная кнопка переключатель
-local MobileToggleLabel = Instance.new("TextLabel")
-MobileToggleLabel.Size = UDim2.new(0, 200, 0, 30)
-MobileToggleLabel.Position = UDim2.new(0, 15, 0, 65)
-MobileToggleLabel.BackgroundTransparency = 1
-MobileToggleLabel.Text = "Show Mobile Button"
-MobileToggleLabel.Font = Enum.Font.RobotoMono
-MobileToggleLabel.TextSize = 14
-MobileToggleLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-MobileToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-MobileToggleLabel.Parent = SettingsFrame
-
-local MobileShowBtn = Instance.new("TextButton")
-MobileShowBtn.Size = UDim2.new(0, 30, 0, 30)
-MobileShowBtn.Position = UDim2.new(1, -40, 0, 65)
-MobileShowBtn.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
-MobileShowBtn.Text = ""
-MobileShowBtn.Parent = SettingsFrame
-Instance.new("UICorner", MobileShowBtn).CornerRadius = UDim.new(0, 6)
-local MobileShowStroke = Instance.new("UIStroke", MobileShowBtn)
-MobileShowStroke.Color = Color3.fromRGB(150, 50, 50)
 
 -- ===========================
--- === ЛОГИКА ИНТЕРФЕЙСА ===
+-- === ЛОГИКА ОКНА И DRAG ===
 -- ===========================
 
-GearBtn.MouseButton1Click:Connect(function()
-    SettingsFrame.Visible = not SettingsFrame.Visible
-end)
-
--- Перетаскивание главного окна
-local dragging, dragInput, dragStart, startPos
+local dragging, dragStart, startPos
 MainWindow.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
@@ -345,21 +378,12 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-    end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
 end)
 
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
-MinBtn.MouseButton1Click:Connect(function()
-    MainWindow.Visible = false
-    RestoreBtn.Visible = true
-end)
-RestoreBtn.MouseButton1Click:Connect(function()
-    MainWindow.Visible = true
-    RestoreBtn.Visible = false
-end)
-
+MinBtn.MouseButton1Click:Connect(function() MainWindow.Visible = false RestoreBtn.Visible = true end)
+RestoreBtn.MouseButton1Click:Connect(function() MainWindow.Visible = true RestoreBtn.Visible = false end)
 local isFullscreen = false
 FullBtn.MouseButton1Click:Connect(function()
     isFullscreen = not isFullscreen
@@ -368,166 +392,233 @@ FullBtn.MouseButton1Click:Connect(function()
     MainWindow.Position = UDim2.new(0.5, 0, 0.5, 0)
 end)
 
--- =====================================
--- === ЛОГИКА ФУНКЦИЙ (FLY, БИНДЫ, СЛАЙДЕР, DRAG) ===
--- =====================================
 
-local isFlying = false
-local boundKey = nil
-local isBinding = false
-local bg, bv
+-- ===========================
+-- === ОБЩИЕ ПЕРЕМЕННЫЕ ===
+-- ===========================
 
+local binds = {Fly = nil, Noclip = nil, Speed = nil, Sit = nil}
+local isBinding = {Fly = false, Noclip = false, Speed = false, Sit = false}
+local flySpeed, walkSpeedMod = 50, 50
+
+
+-- ===========================
+-- === 1. FLY ===
+-- ===========================
+local isFlying, bg, bv = false, nil, nil
 local function toggleFly()
     isFlying = not isFlying
     if isFlying then
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
-        ToggleStroke.Color = Color3.fromRGB(50, 150, 50)
-        MobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
-        
+        FlyToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+        FlyStroke.Color = Color3.fromRGB(50, 150, 50)
+        FlyMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
-            local root = char.HumanoidRootPart
             char.Humanoid.PlatformStand = true
-            
-            bg = Instance.new("BodyGyro", root)
-            bg.P = 9e4
-            bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-            bg.cframe = root.CFrame
-            bv = Instance.new("BodyVelocity", root)
-            bv.velocity = Vector3.new(0,0,0)
-            bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
-            
+            bg = Instance.new("BodyGyro", char.HumanoidRootPart)
+            bg.P = 9e4 bg.maxTorque = Vector3.new(9e9, 9e9, 9e9) bg.cframe = char.HumanoidRootPart.CFrame
+            bv = Instance.new("BodyVelocity", char.HumanoidRootPart)
+            bv.velocity = Vector3.new(0,0,0) bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
             RunService:BindToRenderStep("SonyaFly", Enum.RenderPriority.Camera.Value, function()
                 if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-                local moveDir = Vector3.new(0,0,0)
-                if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Camera.CFrame.LookVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - Camera.CFrame.LookVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Camera.CFrame.RightVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - Camera.CFrame.RightVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0,1,0) end
-                if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0,1,0) end
-                bg.cframe = Camera.CFrame
-                bv.velocity = moveDir * flySpeed
+                local md = Vector3.new(0,0,0)
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then md = md + Camera.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then md = md - Camera.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then md = md + Camera.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then md = md - Camera.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then md = md + Vector3.new(0,1,0) end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then md = md - Vector3.new(0,1,0) end
+                bg.cframe = Camera.CFrame bv.velocity = md * flySpeed
             end)
         end
     else
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
-        ToggleStroke.Color = Color3.fromRGB(150, 50, 50)
-        MobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-        
+        FlyToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+        FlyStroke.Color = Color3.fromRGB(150, 50, 50)
+        FlyMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
         RunService:UnbindFromRenderStep("SonyaFly")
-        if bg then bg:Destroy() end
-        if bv then bv:Destroy() end
-        
+        if bg then bg:Destroy() end if bv then bv:Destroy() end
         local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.PlatformStand = false
-        end
+        if char and char:FindFirstChild("Humanoid") then char.Humanoid.PlatformStand = false end
     end
 end
+FlyToggle.MouseButton1Click:Connect(toggleFly)
 
-ToggleBtn.MouseButton1Click:Connect(toggleFly)
-
--- Перетаскивание и клик по Мобильной Кнопке
-local mobileDragActive = false
-local mobileHasDragged = false
-local mobileDragStart, mobileStartPos
-
-MobileBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        mobileDragActive = true
-        mobileHasDragged = false
-        mobileDragStart = input.Position
-        mobileStartPos = MobileBtn.Position
-    end
-end)
-
+-- Слайдер Fly
+local isSlidingFly = false
+FlySlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingFly = true end end)
 UserInputService.InputChanged:Connect(function(input)
-    if mobileDragActive and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - mobileDragStart
-        if delta.Magnitude > 5 then -- Если сдвинули больше чем на 5 пикселей, считаем это перетаскиванием
-            mobileHasDragged = true
-        end
-        MobileBtn.Position = UDim2.new(mobileStartPos.X.Scale, mobileStartPos.X.Offset + delta.X, mobileStartPos.Y.Scale, mobileStartPos.Y.Offset + delta.Y)
+    if isSlidingFly and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local pos = math.clamp((input.Position.X - FlySlider.Parent.AbsolutePosition.X) / FlySlider.Parent.AbsoluteSize.X, 0, 1)
+        FlyFill.Size = UDim2.new(pos, 0, 1, 0)
+        flySpeed = math.floor(10 + (200 - 10) * pos) FlyLabel.Text = "Fly Speed: " .. flySpeed
     end
 end)
+UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingFly = false end end)
 
-UserInputService.InputEnded:Connect(function(input)
-    if mobileDragActive and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-        mobileDragActive = false
-        if not mobileHasDragged then
-            -- Если не перетаскивали, а просто нажали — включаем полет
-            toggleFly()
-        end
+
+-- ===========================
+-- === 2. NOCLIP ===
+-- ===========================
+local isNoclip, noclipConnection = false, nil
+local function toggleNoclip()
+    isNoclip = not isNoclip
+    if isNoclip then
+        NoclipToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+        NoclipStroke.Color = Color3.fromRGB(50, 150, 50)
+        NoclipMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+        noclipConnection = RunService.Stepped:Connect(function()
+            local char = LocalPlayer.Character
+            if char then for _, v in ipairs(char:GetDescendants()) do if v:IsA("BasePart") and v.CanCollide then v.CanCollide = false end end end
+        end)
+    else
+        NoclipToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+        NoclipStroke.Color = Color3.fromRGB(150, 50, 50)
+        NoclipMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+        if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
     end
-end)
-
--- Логика Слайдера скорости
-local isSliding = false
-local function updateSlider(input)
-    local pos = math.clamp((input.Position.X - SliderBg.AbsolutePosition.X) / SliderBg.AbsoluteSize.X, 0, 1)
-    SliderFill.Size = UDim2.new(pos, 0, 1, 0)
-    flySpeed = math.floor(minSpeed + (maxSpeed - minSpeed) * pos)
-    SpeedLabel.Text = "Fly Speed: " .. flySpeed
 end
+NoclipToggle.MouseButton1Click:Connect(toggleNoclip)
 
-SliderBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isSliding = true
-        updateSlider(input)
+
+-- ===========================
+-- === 3. SPEEDHACK ===
+-- ===========================
+local isSpeedhack, speedConnection = false, nil
+local function toggleSpeedhack()
+    isSpeedhack = not isSpeedhack
+    if isSpeedhack then
+        SpeedToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+        SpeedStroke.Color = Color3.fromRGB(50, 150, 50)
+        SpeedMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+        -- Постоянно обновляем скорость (чтобы игра не сбросила её)
+        speedConnection = RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid.WalkSpeed = walkSpeedMod
+            end
+        end)
+    else
+        SpeedToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+        SpeedStroke.Color = Color3.fromRGB(150, 50, 50)
+        SpeedMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+        if speedConnection then speedConnection:Disconnect() speedConnection = nil end
+        -- Возвращаем дефолтную скорость
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then char.Humanoid.WalkSpeed = 16 end
     end
-end)
+end
+SpeedToggle.MouseButton1Click:Connect(toggleSpeedhack)
 
+-- Слайдер Speedhack
+local isSlidingSpeed = false
+SpeedSlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingSpeed = true end end)
 UserInputService.InputChanged:Connect(function(input)
-    if isSliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        updateSlider(input)
+    if isSlidingSpeed and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local pos = math.clamp((input.Position.X - SpeedSlider.Parent.AbsolutePosition.X) / SpeedSlider.Parent.AbsoluteSize.X, 0, 1)
+        SpeedFill.Size = UDim2.new(pos, 0, 1, 0)
+        walkSpeedMod = math.floor(16 + (250 - 16) * pos) SpeedLabel.Text = "WalkSpeed: " .. walkSpeedMod
     end
 end)
+UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingSpeed = false end end)
 
-UserInputService.InputEnded:Connect(function(input)
-    if isSliding and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-        isSliding = false
-    end
-end)
 
--- Логика бинда
-BindBtn.MouseButton1Click:Connect(function()
-    BindBtn.Text = "..."
-    isBinding = true
-end)
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if isBinding and input.UserInputType == Enum.UserInputType.Keyboard then
-        if input.KeyCode == Enum.KeyCode.Escape then
-            boundKey = nil
-            BindBtn.Text = "[NONE]"
-        else
-            boundKey = input.KeyCode
-            local keyStr = tostring(input.KeyCode):gsub("Enum.KeyCode.", "")
-            BindBtn.Text = "[" .. keyStr .. "]"
-        end
-        isBinding = false
-        return
+-- ===========================
+-- === 4. SIT (СЕСТЬ/ВСТАТЬ) ===
+-- ===========================
+local function toggleSit()
+    local char = LocalPlayer.Character
+    if not char then 
+        warn("Скрипт Sit: Персонаж (Character) не найден!") 
+        return 
     end
     
-    if not gameProcessed and boundKey and input.KeyCode == boundKey then
-        toggleFly()
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then 
+        warn("Скрипт Sit: Объект Humanoid не найден внутри персонажа!") 
+        return 
+    end
+    
+    -- Переключение состояния (True / False)
+    hum.Sit = not hum.Sit
+    
+    -- Анимация кнопки
+    SitToggle.BackgroundColor3 = hum.Sit and Color3.fromRGB(10, 30, 10) or Color3.fromRGB(30, 10, 10)
+    SitStroke.Color = hum.Sit and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+end
+SitToggle.MouseButton1Click:Connect(toggleSit)
+
+
+-- ===========================
+-- === БИНДЫ И МОБ. КНОПКИ ===
+-- ===========================
+
+local function setupBind(btn, keyName, actionFunc)
+    btn.MouseButton1Click:Connect(function() btn.Text = "..." isBinding[keyName] = true end)
+end
+setupBind(FlyBindBtn, "Fly") setupBind(NoclipBindBtn, "Noclip") setupBind(SpeedBindBtn, "Speed") setupBind(SitBindBtn, "Sit")
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        for keyName, binding in pairs(isBinding) do
+            if binding then
+                local btnUI = keyName == "Fly" and FlyBindBtn or keyName == "Noclip" and NoclipBindBtn or keyName == "Speed" and SpeedBindBtn or SitBindBtn
+                if input.KeyCode == Enum.KeyCode.Escape then
+                    binds[keyName] = nil btnUI.Text = "[NONE]"
+                else
+                    binds[keyName] = input.KeyCode btnUI.Text = "[" .. tostring(input.KeyCode):gsub("Enum.KeyCode.", "") .. "]"
+                end
+                isBinding[keyName] = false return
+            end
+        end
+    end
+    
+    if not gp then
+        if binds.Fly and input.KeyCode == binds.Fly then toggleFly() end
+        if binds.Noclip and input.KeyCode == binds.Noclip then toggleNoclip() end
+        if binds.Speed and input.KeyCode == binds.Speed then toggleSpeedhack() end
+        if binds.Sit and input.KeyCode == binds.Sit then toggleSit() end
     end
 end)
 
--- Показать/скрыть мобильную кнопку
-local showMobileBtn = false
-MobileShowBtn.MouseButton1Click:Connect(function()
-    showMobileBtn = not showMobileBtn
-    MobileBtn.Visible = showMobileBtn
-    if showMobileBtn then
-        MobileShowBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
-        MobileShowStroke.Color = Color3.fromRGB(50, 150, 50)
-    else
-        MobileShowBtn.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
-        MobileShowStroke.Color = Color3.fromRGB(150, 50, 50)
-    end
-end)
+local function makeMobileBtnDraggable(btn, actionFunc)
+    local dragActive, hasDragged, dStart, sPos = false, false, nil, nil
+    btn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragActive = true hasDragged = false dStart = input.Position sPos = btn.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragActive and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dStart
+            if delta.Magnitude > 5 then hasDragged = true end
+            btn.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + delta.X, sPos.Y.Scale, sPos.Y.Offset + delta.Y)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if dragActive and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+            dragActive = false if not hasDragged then actionFunc() end
+        end
+    end)
+end
+makeMobileBtnDraggable(FlyMobileBtn, toggleFly)
+makeMobileBtnDraggable(NoclipMobileBtn, toggleNoclip)
+makeMobileBtnDraggable(SpeedMobileBtn, toggleSpeedhack)
+makeMobileBtnDraggable(SitMobileBtn, toggleSit)
+
+local function setupMobileShow(boolBtn, mobileBtn)
+    local isShown = false
+    boolBtn.MouseButton1Click:Connect(function()
+        isShown = not isShown
+        mobileBtn.Visible = isShown
+        boolBtn.Text = isShown and "True" or "False"
+        boolBtn.TextColor3 = isShown and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+        boolBtn.BackgroundColor3 = isShown and Color3.fromRGB(10, 30, 10) or Color3.fromRGB(30, 10, 10)
+    end)
+end
+setupMobileShow(FlyBoolBtn, FlyMobileBtn)
+setupMobileShow(NoclipBoolBtn, NoclipMobileBtn)
+setupMobileShow(SpeedBoolBtn, SpeedMobileBtn)
+setupMobileShow(SitBoolBtn, SitMobileBtn)
 
 -- Анимации интерфейса
 TweenService:Create(Separator, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {BackgroundTransparency = 0.8}):Play()
