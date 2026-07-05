@@ -5,7 +5,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local guiName = "SonyaGUI"
 
--- Определение родителя для GUI (CoreGui для экзекуторов, PlayerGui для обычной игры)
+-- Определение родителя
 local parent = nil
 if pcall(function() return CoreGui.Name end) then
     parent = CoreGui
@@ -13,7 +13,7 @@ else
     parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- Удаляем старую версию GUI, если она есть
+-- Удаляем старую версию
 if parent:FindFirstChild(guiName) then
     parent[guiName]:Destroy()
 end
@@ -23,7 +23,28 @@ ScreenGui.Name = guiName
 ScreenGui.Parent = parent
 ScreenGui.ResetOnSpawn = false
 
--- Основное окно (.gui-window)
+-- === Кнопка восстановления (при свернутом окне) ===
+local RestoreBtn = Instance.new("TextButton")
+RestoreBtn.Name = "RestoreBtn"
+RestoreBtn.Size = UDim2.new(0, 100, 0, 40)
+RestoreBtn.Position = UDim2.new(0, 20, 0, 20)
+RestoreBtn.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
+RestoreBtn.Text = "sonya<3"
+RestoreBtn.Font = Enum.Font.RobotoMono
+RestoreBtn.TextSize = 16
+RestoreBtn.TextColor3 = Color3.fromRGB(85, 85, 85)
+RestoreBtn.Visible = false -- Скрыта по умолчанию
+RestoreBtn.Parent = ScreenGui
+
+local RestoreCorner = Instance.new("UICorner")
+RestoreCorner.CornerRadius = UDim.new(0, 4)
+RestoreCorner.Parent = RestoreBtn
+
+local RestoreStroke = Instance.new("UIStroke")
+RestoreStroke.Color = Color3.fromRGB(68, 68, 68)
+RestoreStroke.Parent = RestoreBtn
+
+-- === Основное окно ===
 local MainWindow = Instance.new("Frame")
 MainWindow.Name = "MainWindow"
 MainWindow.Size = UDim2.new(0, 850, 0, 550)
@@ -40,11 +61,11 @@ MainUICorner.CornerRadius = UDim.new(0, 12)
 MainUICorner.Parent = MainWindow
 
 local MainUIStroke = Instance.new("UIStroke")
-MainUIStroke.Color = Color3.fromRGB(26, 26, 26) -- #1a1a1a
+MainUIStroke.Color = Color3.fromRGB(26, 26, 26)
 MainUIStroke.Thickness = 1
 MainUIStroke.Parent = MainWindow
 
--- Левая панель (.left-panel)
+-- === Левая панель ===
 local LeftPanel = Instance.new("Frame")
 LeftPanel.Name = "LeftPanel"
 LeftPanel.Size = UDim2.new(0, 220, 1, 0)
@@ -53,7 +74,6 @@ LeftPanel.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
 LeftPanel.BorderSizePixel = 0
 LeftPanel.Parent = MainWindow
 
--- Отступы для левой панели (padding: 20px)
 local LeftPadding = Instance.new("UIPadding")
 LeftPadding.PaddingTop = UDim.new(0, 20)
 LeftPadding.PaddingBottom = UDim.new(0, 20)
@@ -61,7 +81,69 @@ LeftPadding.PaddingLeft = UDim.new(0, 20)
 LeftPadding.PaddingRight = UDim.new(0, 20)
 LeftPadding.Parent = LeftPanel
 
--- Логотип (.logo)
+-- Layout для левой панели (чтобы элементы шли сверху вниз)
+local LeftLayout = Instance.new("UIListLayout")
+LeftLayout.SortOrder = Enum.SortOrder.LayoutOrder
+LeftLayout.Padding = UDim.new(0, 15)
+LeftLayout.Parent = LeftPanel
+
+-- === Панель кнопок управления окном ===
+local ControlsFrame = Instance.new("Frame")
+ControlsFrame.Name = "ControlsFrame"
+ControlsFrame.Size = UDim2.new(1, 0, 0, 25)
+ControlsFrame.BackgroundTransparency = 1
+ControlsFrame.LayoutOrder = 1
+ControlsFrame.Parent = LeftPanel
+
+local ControlsLayout = Instance.new("UIListLayout")
+ControlsLayout.FillDirection = Enum.FillDirection.Horizontal
+ControlsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ControlsLayout.Padding = UDim.new(0, 8)
+ControlsLayout.Parent = ControlsFrame
+
+-- Функция создания кнопок управления
+local function createControlBtn(name, text, order)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Size = UDim2.new(0, 25, 0, 25)
+    btn.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
+    btn.Text = text
+    btn.Font = Enum.Font.RobotoMono
+    btn.TextSize = 14
+    btn.TextColor3 = Color3.fromRGB(85, 85, 85)
+    btn.LayoutOrder = order
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = btn
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(68, 68, 68)
+    stroke.Parent = btn
+    
+    -- Анимация наведения
+    local hoverInfo = TweenInfo.new(0.2, Enum.EasingStyle.Sine)
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, hoverInfo, {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+        TweenService:Create(stroke, hoverInfo, {Color = Color3.fromRGB(255, 255, 255)}):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, hoverInfo, {TextColor3 = Color3.fromRGB(85, 85, 85)}):Play()
+        TweenService:Create(stroke, hoverInfo, {Color = Color3.fromRGB(68, 68, 68)}):Play()
+    end)
+    
+    return btn
+end
+
+local CloseBtn = createControlBtn("CloseBtn", "✕", 1)
+local MinBtn = createControlBtn("MinBtn", "−", 2)
+local FullBtn = createControlBtn("FullBtn", "◻", 3)
+
+CloseBtn.Parent = ControlsFrame
+MinBtn.Parent = ControlsFrame
+FullBtn.Parent = ControlsFrame
+
+-- === Логотип ===
 local Logo = Instance.new("TextLabel")
 Logo.Name = "Logo"
 Logo.Size = UDim2.new(1, 0, 0, 70)
@@ -69,9 +151,8 @@ Logo.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
 Logo.Text = "sonya<3"
 Logo.Font = Enum.Font.RobotoMono
 Logo.TextSize = 20
-Logo.TextColor3 = Color3.fromRGB(85, 85, 85) -- #555
-Logo.BorderSizePixel = 0
-Logo.Active = true
+Logo.TextColor3 = Color3.fromRGB(85, 85, 85)
+Logo.LayoutOrder = 2
 Logo.Parent = LeftPanel
 
 local LogoUICorner = Instance.new("UICorner")
@@ -79,11 +160,10 @@ LogoUICorner.CornerRadius = UDim.new(0, 4)
 LogoUICorner.Parent = Logo
 
 local LogoUIStroke = Instance.new("UIStroke")
-LogoUIStroke.Color = Color3.fromRGB(68, 68, 68) -- #444
-LogoUIStroke.Thickness = 1
+LogoUIStroke.Color = Color3.fromRGB(68, 68, 68)
 LogoUIStroke.Parent = Logo
 
--- Разделитель (.separator)
+-- === Разделитель ===
 local Separator = Instance.new("Frame")
 Separator.Name = "Separator"
 Separator.Size = UDim2.new(0, 2, 1, 0)
@@ -92,14 +172,13 @@ Separator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 Separator.BorderSizePixel = 0
 Separator.Parent = MainWindow
 
--- Свечение для разделителя (имитация box-shadow)
 local SepGlow = Instance.new("UIStroke")
 SepGlow.Color = Color3.fromRGB(255, 255, 255)
 SepGlow.Thickness = 2
 SepGlow.Transparency = 0.5
 SepGlow.Parent = Separator
 
--- Правая панель (.right-panel)
+-- === Правая панель ===
 local RightPanel = Instance.new("Frame")
 RightPanel.Name = "RightPanel"
 RightPanel.Size = UDim2.new(1, -222, 1, 0)
@@ -108,7 +187,6 @@ RightPanel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 RightPanel.BorderSizePixel = 0
 RightPanel.Parent = MainWindow
 
--- Пустое состояние (.empty-state)
 local EmptyState = Instance.new("TextLabel")
 EmptyState.Name = "EmptyState"
 EmptyState.Size = UDim2.new(1, 0, 1, 0)
@@ -116,14 +194,14 @@ EmptyState.BackgroundTransparency = 1
 EmptyState.Text = "[ BLANK CANVAS ]"
 EmptyState.Font = Enum.Font.RobotoMono
 EmptyState.TextSize = 14
-EmptyState.TextColor3 = Color3.fromRGB(51, 51, 51) -- #333
+EmptyState.TextColor3 = Color3.fromRGB(51, 51, 51)
 EmptyState.Parent = RightPanel
 
 ---
 --- ИНТЕРАКТИВНОСТЬ И АНИМАЦИИ
 ---
 
--- 1. Скрипт для перетаскивания (Drag)
+-- 1. Перетаскивание окна
 local dragging, dragInput, dragStart, startPos
 
 MainWindow.InputBegan:Connect(function(input)
@@ -131,7 +209,6 @@ MainWindow.InputBegan:Connect(function(input)
         dragging = true
         dragStart = input.Position
         startPos = MainWindow.Position
-        
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
@@ -153,31 +230,62 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- 2. Эффект наведения для Лого (.logo:hover)
-local hoverInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
-local logoHoverEnter = TweenService:Create(Logo, hoverInfo, {TextColor3 = Color3.fromRGB(255, 255, 255)})
-local logoStrokeHoverEnter = TweenService:Create(LogoUIStroke, hoverInfo, {Color = Color3.fromRGB(255, 255, 255)})
-local logoHoverLeave = TweenService:Create(Logo, hoverInfo, {TextColor3 = Color3.fromRGB(85, 85, 85)})
-local logoStrokeHoverLeave = TweenService:Create(LogoUIStroke, hoverInfo, {Color = Color3.fromRGB(68, 68, 68)})
+-- 2. Логика кнопок управления
+-- Закрыть
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
 
+-- Свернуть (Скрывает главное окно, показывает кнопку восстановления)
+MinBtn.MouseButton1Click:Connect(function()
+    MainWindow.Visible = false
+    RestoreBtn.Visible = true
+end)
+
+RestoreBtn.MouseButton1Click:Connect(function()
+    MainWindow.Visible = true
+    RestoreBtn.Visible = false
+end)
+
+-- Полный экран (Смена размера с анимацией)
+local isFullscreen = false
+local normalSize = UDim2.new(0, 850, 0, 550)
+local fullscreenSize = UDim2.new(1, 0, 1, 0)
+
+FullBtn.MouseButton1Click:Connect(function()
+    isFullscreen = not isFullscreen
+    local targetSize = isFullscreen and fullscreenSize or normalSize
+    local targetRadius = isFullscreen and UDim.new(0, 0) or UDim.new(0, 12)
+    
+    local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    
+    TweenService:Create(MainWindow, tweenInfo, {Size = targetSize, Position = UDim2.new(0.5, 0, 0.5, 0)}):Play()
+    TweenService:Create(MainUICorner, tweenInfo, {CornerRadius = targetRadius}):Play()
+end)
+
+-- 3. Анимации Логотипа и Разделителя
+local hoverInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine)
 Logo.MouseEnter:Connect(function()
-    logoHoverEnter:Play()
-    logoStrokeHoverEnter:Play()
+    TweenService:Create(Logo, hoverInfo, {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+    TweenService:Create(LogoUIStroke, hoverInfo, {Color = Color3.fromRGB(255, 255, 255)}):Play()
 end)
-
 Logo.MouseLeave:Connect(function()
-    logoHoverLeave:Play()
-    logoStrokeHoverLeave:Play()
+    TweenService:Create(Logo, hoverInfo, {TextColor3 = Color3.fromRGB(85, 85, 85)}):Play()
+    TweenService:Create(LogoUIStroke, hoverInfo, {Color = Color3.fromRGB(68, 68, 68)}):Play()
 end)
 
--- 3. Пульсация разделителя (@keyframes pulse)
-local pulseInfo = TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
-local pulseTween = TweenService:Create(Separator, pulseInfo, {BackgroundTransparency = 0.7})
-local pulseGlowTween = TweenService:Create(SepGlow, pulseInfo, {Transparency = 1})
-pulseTween:Play()
-pulseGlowTween:Play()
+RestoreBtn.MouseEnter:Connect(function()
+    TweenService:Create(RestoreBtn, hoverInfo, {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+    TweenService:Create(RestoreStroke, hoverInfo, {Color = Color3.fromRGB(255, 255, 255)}):Play()
+end)
+RestoreBtn.MouseLeave:Connect(function()
+    TweenService:Create(RestoreBtn, hoverInfo, {TextColor3 = Color3.fromRGB(85, 85, 85)}):Play()
+    TweenService:Create(RestoreStroke, hoverInfo, {Color = Color3.fromRGB(68, 68, 68)}):Play()
+end)
 
--- 4. Анимация появления текста (@keyframes fadeIn)
+local pulseInfo = TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+TweenService:Create(Separator, pulseInfo, {BackgroundTransparency = 0.7}):Play()
+TweenService:Create(SepGlow, pulseInfo, {Transparency = 1}):Play()
+
 EmptyState.TextTransparency = 1
-local fadeInTween = TweenService:Create(EmptyState, TweenInfo.new(1, Enum.EasingStyle.Linear), {TextTransparency = 0})
-fadeInTween:Play()
+TweenService:Create(EmptyState, TweenInfo.new(1, Enum.EasingStyle.Linear), {TextTransparency = 0}):Play()
