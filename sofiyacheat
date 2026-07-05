@@ -7,7 +7,7 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-local guiName = "SonyaGUI_V4"
+local guiName = "SonyaGUI_V5"
 
 -- Определение родителя
 local parent = nil
@@ -42,7 +42,6 @@ RestoreBtn.TextSize = 16
 RestoreBtn.TextColor3 = Color3.fromRGB(85, 85, 85)
 RestoreBtn.Visible = false
 RestoreBtn.Parent = ScreenGui
-
 Instance.new("UICorner", RestoreBtn).CornerRadius = UDim.new(0, 4)
 local RestoreStroke = Instance.new("UIStroke", RestoreBtn)
 RestoreStroke.Color = Color3.fromRGB(68, 68, 68)
@@ -51,17 +50,17 @@ RestoreStroke.Color = Color3.fromRGB(68, 68, 68)
 local MobileBtn = Instance.new("TextButton")
 MobileBtn.Name = "MobileFlyBtn"
 MobileBtn.Size = UDim2.new(0, 60, 0, 60)
-MobileBtn.Position = UDim2.new(1, -80, 0.5, 0) -- Справа по центру
+MobileBtn.Position = UDim2.new(1, -80, 0.5, 0) 
 MobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 MobileBtn.BackgroundTransparency = 0.3
 MobileBtn.Text = "+ Fly"
 MobileBtn.Font = Enum.Font.RobotoMono
 MobileBtn.TextSize = 14
 MobileBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-MobileBtn.Visible = false -- Скрыта по умолчанию
+MobileBtn.Visible = false
+MobileBtn.Active = true
 MobileBtn.Parent = ScreenGui
-
-Instance.new("UICorner", MobileBtn).CornerRadius = UDim.new(0, 30) -- Круглая
+Instance.new("UICorner", MobileBtn).CornerRadius = UDim.new(0, 30)
 Instance.new("UIStroke", MobileBtn).Color = Color3.fromRGB(68, 68, 68)
 
 -- === Основное окно ===
@@ -76,7 +75,6 @@ MainWindow.BorderSizePixel = 0
 MainWindow.ClipsDescendants = true
 MainWindow.Active = true
 MainWindow.Parent = ScreenGui
-
 local MainUICorner = Instance.new("UICorner", MainWindow)
 MainUICorner.CornerRadius = UDim.new(0, 12)
 Instance.new("UIStroke", MainWindow).Color = Color3.fromRGB(40, 40, 40)
@@ -88,24 +86,21 @@ LeftPanel.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
 LeftPanel.BackgroundTransparency = 0.2
 LeftPanel.BorderSizePixel = 0
 LeftPanel.Parent = MainWindow
-
 local LeftPadding = Instance.new("UIPadding", LeftPanel)
 LeftPadding.PaddingTop = UDim.new(0, 20)
 LeftPadding.PaddingBottom = UDim.new(0, 20)
 LeftPadding.PaddingLeft = UDim.new(0, 20)
 LeftPadding.PaddingRight = UDim.new(0, 20)
-
 local LeftLayout = Instance.new("UIListLayout", LeftPanel)
 LeftLayout.SortOrder = Enum.SortOrder.LayoutOrder
 LeftLayout.Padding = UDim.new(0, 15)
 
--- Кнопки управления (Закрыть, Свернуть, Полный экран)
+-- Кнопки управления
 local ControlsFrame = Instance.new("Frame")
 ControlsFrame.Size = UDim2.new(1, 0, 0, 25)
 ControlsFrame.BackgroundTransparency = 1
 ControlsFrame.LayoutOrder = 1
 ControlsFrame.Parent = LeftPanel
-
 local ControlsLayout = Instance.new("UIListLayout", ControlsFrame)
 ControlsLayout.FillDirection = Enum.FillDirection.Horizontal
 ControlsLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -113,7 +108,6 @@ ControlsLayout.Padding = UDim.new(0, 8)
 
 local function createControlBtn(name, text, order)
     local btn = Instance.new("TextButton")
-    btn.Name = name
     btn.Size = UDim2.new(0, 25, 0, 25)
     btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     btn.BackgroundTransparency = 0.3
@@ -126,7 +120,6 @@ local function createControlBtn(name, text, order)
     Instance.new("UIStroke", btn).Color = Color3.fromRGB(68, 68, 68)
     return btn
 end
-
 local CloseBtn = createControlBtn("CloseBtn", "✕", 1)
 local MinBtn = createControlBtn("MinBtn", "−", 2)
 local FullBtn = createControlBtn("FullBtn", "◻", 3)
@@ -154,7 +147,6 @@ TabsFrame.Size = UDim2.new(1, 0, 1, -115)
 TabsFrame.BackgroundTransparency = 1
 TabsFrame.LayoutOrder = 3
 TabsFrame.Parent = LeftPanel
-
 local TabMine = Instance.new("TextButton")
 TabMine.Size = UDim2.new(1, 0, 0, 35)
 TabMine.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
@@ -187,7 +179,6 @@ RightPanel.Size = UDim2.new(1, -222, 1, 0)
 RightPanel.Position = UDim2.new(0, 222, 0, 0)
 RightPanel.BackgroundTransparency = 1
 RightPanel.Parent = MainWindow
-
 local ContentScroll = Instance.new("ScrollingFrame")
 ContentScroll.Size = UDim2.new(1, -40, 1, -40)
 ContentScroll.Position = UDim2.new(0, 20, 0, 20)
@@ -195,7 +186,6 @@ ContentScroll.BackgroundTransparency = 1
 ContentScroll.ScrollBarThickness = 4
 ContentScroll.BorderSizePixel = 0
 ContentScroll.Parent = RightPanel
-
 local ContentLayout = Instance.new("UIListLayout", ContentScroll)
 ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ContentLayout.Padding = UDim.new(0, 10)
@@ -204,7 +194,6 @@ ContentLayout.Padding = UDim.new(0, 10)
 -- === СОЗДАНИЕ ФУНКЦИИ FLY С НАСТРОЙКАМИ ===
 -- ==========================================
 
--- Главная плашка Fly
 local FlyFrame = Instance.new("Frame")
 FlyFrame.Size = UDim2.new(1, -10, 0, 50)
 FlyFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
@@ -225,7 +214,6 @@ FlyTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
 FlyTitle.TextXAlignment = Enum.TextXAlignment.Left
 FlyTitle.Parent = FlyFrame
 
--- Кнопка шестеренки (Настройки)
 local GearBtn = Instance.new("TextButton")
 GearBtn.Size = UDim2.new(0, 30, 0, 30)
 GearBtn.Position = UDim2.new(1, -150, 0.5, -15)
@@ -238,7 +226,6 @@ GearBtn.Parent = FlyFrame
 Instance.new("UICorner", GearBtn).CornerRadius = UDim.new(0, 6)
 Instance.new("UIStroke", GearBtn).Color = Color3.fromRGB(60, 60, 60)
 
--- Кнопка бинда
 local BindBtn = Instance.new("TextButton")
 BindBtn.Size = UDim2.new(0, 60, 0, 30)
 BindBtn.Position = UDim2.new(1, -110, 0.5, -15)
@@ -251,7 +238,6 @@ BindBtn.Parent = FlyFrame
 Instance.new("UICorner", BindBtn).CornerRadius = UDim.new(0, 6)
 Instance.new("UIStroke", BindBtn).Color = Color3.fromRGB(60, 60, 60)
 
--- Тумблер (Toggle)
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Size = UDim2.new(0, 30, 0, 30)
 ToggleBtn.Position = UDim2.new(1, -40, 0.5, -15)
@@ -262,32 +248,61 @@ Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
 local ToggleStroke = Instance.new("UIStroke", ToggleBtn)
 ToggleStroke.Color = Color3.fromRGB(150, 50, 50)
 
--- Панель настроек Fly (Скрыта по умолчанию)
+-- Панель настроек Fly
 local SettingsFrame = Instance.new("Frame")
-SettingsFrame.Size = UDim2.new(1, -10, 0, 90)
+SettingsFrame.Size = UDim2.new(1, -10, 0, 110) -- Увеличил высоту для слайдера
 SettingsFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 SettingsFrame.BackgroundTransparency = 0.5
-SettingsFrame.Visible = false -- Скрыта
+SettingsFrame.Visible = false
 SettingsFrame.LayoutOrder = 2
 SettingsFrame.Parent = ContentScroll
 Instance.new("UICorner", SettingsFrame).CornerRadius = UDim.new(0, 8)
 Instance.new("UIStroke", SettingsFrame).Color = Color3.fromRGB(40, 40, 40)
 
--- Настройка скорости
+-- Настройка скорости (Слайдер)
+local flySpeed = 50
+local minSpeed = 10
+local maxSpeed = 200
+
 local SpeedLabel = Instance.new("TextLabel")
-SpeedLabel.Size = UDim2.new(0, 200, 0, 30)
+SpeedLabel.Size = UDim2.new(0, 200, 0, 20)
 SpeedLabel.Position = UDim2.new(0, 15, 0, 10)
 SpeedLabel.BackgroundTransparency = 1
-SpeedLabel.Text = "Fly Speed: 50"
+SpeedLabel.Text = "Fly Speed: " .. flySpeed
 SpeedLabel.Font = Enum.Font.RobotoMono
 SpeedLabel.TextSize = 14
 SpeedLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
 SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
 SpeedLabel.Parent = SettingsFrame
 
+local SliderBg = Instance.new("Frame")
+SliderBg.Size = UDim2.new(0, 200, 0, 6)
+SliderBg.Position = UDim2.new(0, 15, 0, 35)
+SliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+SliderBg.BorderSizePixel = 0
+SliderBg.Parent = SettingsFrame
+Instance.new("UICorner", SliderBg).CornerRadius = UDim.new(1, 0)
+
+local SliderFill = Instance.new("Frame")
+local initialFill = (flySpeed - minSpeed) / (maxSpeed - minSpeed)
+SliderFill.Size = UDim2.new(initialFill, 0, 1, 0)
+SliderFill.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+SliderFill.BorderSizePixel = 0
+SliderFill.Parent = SliderBg
+Instance.new("UICorner", SliderFill).CornerRadius = UDim.new(1, 0)
+
+local SliderBtn = Instance.new("TextButton")
+SliderBtn.Size = UDim2.new(1, 0, 1, 20)
+SliderBtn.Position = UDim2.new(0, 0, 0.5, 0)
+SliderBtn.AnchorPoint = Vector2.new(0, 0.5)
+SliderBtn.BackgroundTransparency = 1
+SliderBtn.Text = ""
+SliderBtn.Parent = SliderBg
+
+-- Мобильная кнопка переключатель
 local MobileToggleLabel = Instance.new("TextLabel")
 MobileToggleLabel.Size = UDim2.new(0, 200, 0, 30)
-MobileToggleLabel.Position = UDim2.new(0, 15, 0, 50)
+MobileToggleLabel.Position = UDim2.new(0, 15, 0, 65)
 MobileToggleLabel.BackgroundTransparency = 1
 MobileToggleLabel.Text = "Show Mobile Button"
 MobileToggleLabel.Font = Enum.Font.RobotoMono
@@ -298,7 +313,7 @@ MobileToggleLabel.Parent = SettingsFrame
 
 local MobileShowBtn = Instance.new("TextButton")
 MobileShowBtn.Size = UDim2.new(0, 30, 0, 30)
-MobileShowBtn.Position = UDim2.new(1, -40, 0, 50)
+MobileShowBtn.Position = UDim2.new(1, -40, 0, 65)
 MobileShowBtn.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
 MobileShowBtn.Text = ""
 MobileShowBtn.Parent = SettingsFrame
@@ -310,36 +325,31 @@ MobileShowStroke.Color = Color3.fromRGB(150, 50, 50)
 -- === ЛОГИКА ИНТЕРФЕЙСА ===
 -- ===========================
 
--- Открытие/Закрытие настроек
 GearBtn.MouseButton1Click:Connect(function()
     SettingsFrame.Visible = not SettingsFrame.Visible
 end)
 
--- Перетаскивание окна
+-- Перетаскивание главного окна
 local dragging, dragInput, dragStart, startPos
 MainWindow.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
         startPos = MainWindow.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
-    end
-end)
-MainWindow.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
     end
 end)
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragStart
         MainWindow.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
 
--- Кнопки управления окном
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 MinBtn.MouseButton1Click:Connect(function()
     MainWindow.Visible = false
@@ -359,24 +369,20 @@ FullBtn.MouseButton1Click:Connect(function()
 end)
 
 -- =====================================
--- === ЛОГИКА ФУНКЦИЙ (FLY И БИНДЫ) ===
+-- === ЛОГИКА ФУНКЦИЙ (FLY, БИНДЫ, СЛАЙДЕР, DRAG) ===
 -- =====================================
 
 local isFlying = false
-local flySpeed = 50
 local boundKey = nil
 local isBinding = false
-local showMobileBtn = false
 local bg, bv
 
--- Логика самого полета
 local function toggleFly()
     isFlying = not isFlying
-    
     if isFlying then
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
         ToggleStroke.Color = Color3.fromRGB(50, 150, 50)
-        MobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10) -- Экранная кнопка зеленеет
+        MobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
         
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
@@ -387,24 +393,19 @@ local function toggleFly()
             bg.P = 9e4
             bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
             bg.cframe = root.CFrame
-            
             bv = Instance.new("BodyVelocity", root)
             bv.velocity = Vector3.new(0,0,0)
             bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
             
-            -- Простой цикл полета (учитывает направление камеры)
             RunService:BindToRenderStep("SonyaFly", Enum.RenderPriority.Camera.Value, function()
                 if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-                local moving = false
                 local moveDir = Vector3.new(0,0,0)
-                
                 if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Camera.CFrame.LookVector end
                 if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - Camera.CFrame.LookVector end
                 if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Camera.CFrame.RightVector end
                 if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - Camera.CFrame.RightVector end
                 if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0,1,0) end
                 if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0,1,0) end
-                
                 bg.cframe = Camera.CFrame
                 bv.velocity = moveDir * flySpeed
             end)
@@ -412,7 +413,7 @@ local function toggleFly()
     else
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
         ToggleStroke.Color = Color3.fromRGB(150, 50, 50)
-        MobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15) -- Экранная кнопка сереет
+        MobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
         
         RunService:UnbindFromRenderStep("SonyaFly")
         if bg then bg:Destroy() end
@@ -426,7 +427,68 @@ local function toggleFly()
 end
 
 ToggleBtn.MouseButton1Click:Connect(toggleFly)
-MobileBtn.MouseButton1Click:Connect(toggleFly) -- Мобильная кнопка делает то же самое
+
+-- Перетаскивание и клик по Мобильной Кнопке
+local mobileDragActive = false
+local mobileHasDragged = false
+local mobileDragStart, mobileStartPos
+
+MobileBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        mobileDragActive = true
+        mobileHasDragged = false
+        mobileDragStart = input.Position
+        mobileStartPos = MobileBtn.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if mobileDragActive and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - mobileDragStart
+        if delta.Magnitude > 5 then -- Если сдвинули больше чем на 5 пикселей, считаем это перетаскиванием
+            mobileHasDragged = true
+        end
+        MobileBtn.Position = UDim2.new(mobileStartPos.X.Scale, mobileStartPos.X.Offset + delta.X, mobileStartPos.Y.Scale, mobileStartPos.Y.Offset + delta.Y)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if mobileDragActive and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        mobileDragActive = false
+        if not mobileHasDragged then
+            -- Если не перетаскивали, а просто нажали — включаем полет
+            toggleFly()
+        end
+    end
+end)
+
+-- Логика Слайдера скорости
+local isSliding = false
+local function updateSlider(input)
+    local pos = math.clamp((input.Position.X - SliderBg.AbsolutePosition.X) / SliderBg.AbsoluteSize.X, 0, 1)
+    SliderFill.Size = UDim2.new(pos, 0, 1, 0)
+    flySpeed = math.floor(minSpeed + (maxSpeed - minSpeed) * pos)
+    SpeedLabel.Text = "Fly Speed: " .. flySpeed
+end
+
+SliderBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isSliding = true
+        updateSlider(input)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if isSliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateSlider(input)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if isSliding and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        isSliding = false
+    end
+end)
 
 -- Логика бинда
 BindBtn.MouseButton1Click:Connect(function()
@@ -435,7 +497,6 @@ BindBtn.MouseButton1Click:Connect(function()
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    -- Обработка бинда
     if isBinding and input.UserInputType == Enum.UserInputType.Keyboard then
         if input.KeyCode == Enum.KeyCode.Escape then
             boundKey = nil
@@ -449,17 +510,16 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         return
     end
     
-    -- Обработка нажатия на забинденную клавишу
     if not gameProcessed and boundKey and input.KeyCode == boundKey then
         toggleFly()
     end
 end)
 
--- Включение/Выключение мобильной кнопки на экране
+-- Показать/скрыть мобильную кнопку
+local showMobileBtn = false
 MobileShowBtn.MouseButton1Click:Connect(function()
     showMobileBtn = not showMobileBtn
     MobileBtn.Visible = showMobileBtn
-    
     if showMobileBtn then
         MobileShowBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
         MobileShowStroke.Color = Color3.fromRGB(50, 150, 50)
@@ -469,6 +529,6 @@ MobileShowBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Пульсация разделителя
+-- Анимации интерфейса
 TweenService:Create(Separator, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {BackgroundTransparency = 0.8}):Play()
 TweenService:Create(SepGlow, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {Transparency = 1}):Play()
