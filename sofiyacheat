@@ -7,9 +7,9 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-local guiName = "SonyaGUI_V7"
+local guiName = "SonyaGUI_V8"
 
--- Определение родителя
+-- Определение родителя (чтобы работало и в экзекьюторах, и в Roblox Studio)
 local parent = nil
 if pcall(function() return CoreGui.Name end) then
     parent = CoreGui
@@ -17,609 +17,783 @@ else
     parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- Надежное удаление старой версии
+-- Удаление старой версии
 for _, child in ipairs(parent:GetChildren()) do
     if child.Name:match("SonyaGUI") then
         child:Destroy()
     end
 end
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = guiName
-ScreenGui.Parent = parent
-ScreenGui.ResetOnSpawn = false
+-- === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
+local binds = {Fly = nil, Noclip = nil, Speed = nil, Sit = nil, ShiftLock = nil, Spin = nil}
+local isBinding = {Fly = false, Noclip = false, Speed = false, Sit = false, ShiftLock = false, Spin = false}
+local flySpeed, walkSpeedMod, spinSpeedMod = 50, 50, 20
+local isSpeedhack = false
 
--- === Кнопка восстановления (при свернутом окне) ===
-local RestoreBtn = Instance.new("TextButton")
-RestoreBtn.Name = "RestoreBtn"
-RestoreBtn.Size = UDim2.new(0, 100, 0, 40)
-RestoreBtn.Position = UDim2.new(0, 20, 0, 20)
-RestoreBtn.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
-RestoreBtn.BackgroundTransparency = 0.15
-RestoreBtn.Text = "sonya<3"
-RestoreBtn.Font = Enum.Font.RobotoMono
-RestoreBtn.TextSize = 16
-RestoreBtn.TextColor3 = Color3.fromRGB(85, 85, 85)
-RestoreBtn.Visible = false
-RestoreBtn.Parent = ScreenGui
-Instance.new("UICorner", RestoreBtn).CornerRadius = UDim.new(0, 4)
-local RestoreStroke = Instance.new("UIStroke", RestoreBtn)
-RestoreStroke.Color = Color3.fromRGB(68, 68, 68)
+-- ==========================================
+-- === ЭТАП 1: МЕНЮ ВЫБОРА РАЗМЕРА (BOOT) ===
+-- ==========================================
 
--- Функция создания мобильных кнопок
-local function createMobileBtn(name, text, yOffset)
+local BootGui = Instance.new("ScreenGui")
+BootGui.Name = guiName .. "_Boot"
+BootGui.Parent = parent
+BootGui.ResetOnSpawn = false
+
+local BootFrame = Instance.new("Frame")
+BootFrame.Size = UDim2.new(0, 300, 0, 200)
+BootFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+BootFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+BootFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+BootFrame.BackgroundTransparency = 0.1
+BootFrame.Parent = BootGui
+Instance.new("UICorner", BootFrame).CornerRadius = UDim.new(0, 12)
+Instance.new("UIStroke", BootFrame).Color = Color3.fromRGB(80, 80, 80)
+
+local BootTitle = Instance.new("TextLabel")
+BootTitle.Size = UDim2.new(1, 0, 0, 40)
+BootTitle.BackgroundTransparency = 1
+BootTitle.Text = "Выберите размер GUI"
+BootTitle.Font = Enum.Font.RobotoMono
+BootTitle.TextSize = 18
+BootTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
+BootTitle.Parent = BootFrame
+
+local function createSizeBtn(text, yPos, scaleFactor)
     local btn = Instance.new("TextButton")
-    btn.Name = "Mobile" .. name .. "Btn"
-    btn.Size = UDim2.new(0, 60, 0, 60)
-    btn.Position = UDim2.new(1, -80, 0.5, yOffset) 
-    btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    btn.BackgroundTransparency = 0.3
+    btn.Size = UDim2.new(0, 260, 0, 40)
+    btn.Position = UDim2.new(0.5, 0, 0, yPos)
+    btn.AnchorPoint = Vector2.new(0.5, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     btn.Text = text
     btn.Font = Enum.Font.RobotoMono
-    btn.TextSize = 12
+    btn.TextSize = 16
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.Visible = false
-    btn.Active = true
-    btn.Parent = ScreenGui
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 30)
-    Instance.new("UIStroke", btn).Color = Color3.fromRGB(68, 68, 68)
-    return btn
-end
-
-local FlyMobileBtn = createMobileBtn("Fly", "+ Fly", -105)
-local NoclipMobileBtn = createMobileBtn("Noclip", "Noclip", -35)
-local SpeedMobileBtn = createMobileBtn("Speed", "Speed", 35)
-local SitMobileBtn = createMobileBtn("Sit", "Sit", 105)
-
--- === Основное окно ===
-local MainWindow = Instance.new("Frame")
-MainWindow.Name = "MainWindow"
-MainWindow.Size = UDim2.new(0, 850, 0, 550)
-MainWindow.Position = UDim2.new(0.5, 0, 0.5, 0)
-MainWindow.AnchorPoint = Vector2.new(0.5, 0.5)
-MainWindow.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-MainWindow.BackgroundTransparency = 0.15
-MainWindow.BorderSizePixel = 0
-MainWindow.ClipsDescendants = true
-MainWindow.Active = true
-MainWindow.Parent = ScreenGui
-local MainUICorner = Instance.new("UICorner", MainWindow)
-MainUICorner.CornerRadius = UDim.new(0, 12)
-Instance.new("UIStroke", MainWindow).Color = Color3.fromRGB(40, 40, 40)
-
--- === Левая панель ===
-local LeftPanel = Instance.new("Frame")
-LeftPanel.Size = UDim2.new(0, 220, 1, 0)
-LeftPanel.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
-LeftPanel.BackgroundTransparency = 0.2
-LeftPanel.BorderSizePixel = 0
-LeftPanel.Parent = MainWindow
-local LeftPadding = Instance.new("UIPadding", LeftPanel)
-LeftPadding.PaddingTop = UDim.new(0, 20)
-LeftPadding.PaddingBottom = UDim.new(0, 20)
-LeftPadding.PaddingLeft = UDim.new(0, 20)
-LeftPadding.PaddingRight = UDim.new(0, 20)
-local LeftLayout = Instance.new("UIListLayout", LeftPanel)
-LeftLayout.SortOrder = Enum.SortOrder.LayoutOrder
-LeftLayout.Padding = UDim.new(0, 15)
-
--- Кнопки управления
-local ControlsFrame = Instance.new("Frame")
-ControlsFrame.Size = UDim2.new(1, 0, 0, 25)
-ControlsFrame.BackgroundTransparency = 1
-ControlsFrame.LayoutOrder = 1
-ControlsFrame.Parent = LeftPanel
-local ControlsLayout = Instance.new("UIListLayout", ControlsFrame)
-ControlsLayout.FillDirection = Enum.FillDirection.Horizontal
-ControlsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-ControlsLayout.Padding = UDim.new(0, 8)
-
-local function createControlBtn(name, text, order)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 25, 0, 25)
-    btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    btn.BackgroundTransparency = 0.3
-    btn.Text = text
-    btn.Font = Enum.Font.RobotoMono
-    btn.TextSize = 14
-    btn.TextColor3 = Color3.fromRGB(120, 120, 120)
-    btn.LayoutOrder = order
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-    Instance.new("UIStroke", btn).Color = Color3.fromRGB(68, 68, 68)
-    return btn
-end
-local CloseBtn = createControlBtn("CloseBtn", "✕", 1)
-local MinBtn = createControlBtn("MinBtn", "−", 2)
-local FullBtn = createControlBtn("FullBtn", "◻", 3)
-CloseBtn.Parent = ControlsFrame
-MinBtn.Parent = ControlsFrame
-FullBtn.Parent = ControlsFrame
-
-local Logo = Instance.new("TextLabel")
-Logo.Size = UDim2.new(1, 0, 0, 60)
-Logo.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-Logo.BackgroundTransparency = 0.3
-Logo.Text = "sonya<3"
-Logo.Font = Enum.Font.RobotoMono
-Logo.TextSize = 20
-Logo.TextColor3 = Color3.fromRGB(200, 200, 200)
-Logo.LayoutOrder = 2
-Logo.Parent = LeftPanel
-Instance.new("UICorner", Logo).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", Logo).Color = Color3.fromRGB(68, 68, 68)
-
-local TabsFrame = Instance.new("Frame")
-TabsFrame.Size = UDim2.new(1, 0, 1, -115)
-TabsFrame.BackgroundTransparency = 1
-TabsFrame.LayoutOrder = 3
-TabsFrame.Parent = LeftPanel
-local TabMine = Instance.new("TextButton")
-TabMine.Size = UDim2.new(1, 0, 0, 35)
-TabMine.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-TabMine.BackgroundTransparency = 0.2
-TabMine.Text = " mine"
-TabMine.TextXAlignment = Enum.TextXAlignment.Left
-TabMine.Font = Enum.Font.RobotoMono
-TabMine.TextSize = 15
-TabMine.TextColor3 = Color3.fromRGB(255, 255, 255)
-TabMine.Parent = TabsFrame
-Instance.new("UICorner", TabMine).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", TabMine).Color = Color3.fromRGB(80, 80, 80)
-
-local Separator = Instance.new("Frame")
-Separator.Size = UDim2.new(0, 2, 1, 0)
-Separator.Position = UDim2.new(0, 220, 0, 0)
-Separator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Separator.BackgroundTransparency = 0.3
-Separator.BorderSizePixel = 0
-Separator.Parent = MainWindow
-local SepGlow = Instance.new("UIStroke", Separator)
-SepGlow.Color = Color3.fromRGB(255, 255, 255)
-SepGlow.Thickness = 2
-SepGlow.Transparency = 0.7
-
--- === Правая панель (Контент) ===
-local RightPanel = Instance.new("Frame")
-RightPanel.Size = UDim2.new(1, -222, 1, 0)
-RightPanel.Position = UDim2.new(0, 222, 0, 0)
-RightPanel.BackgroundTransparency = 1
-RightPanel.Parent = MainWindow
-local ContentScroll = Instance.new("ScrollingFrame")
-ContentScroll.Size = UDim2.new(1, -40, 1, -40)
-ContentScroll.Position = UDim2.new(0, 20, 0, 20)
-ContentScroll.BackgroundTransparency = 1
-ContentScroll.ScrollBarThickness = 4
-ContentScroll.BorderSizePixel = 0
--- Автоматическая прокрутка, когда функций становится много
-ContentScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-ContentScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-ContentScroll.Parent = RightPanel
-local ContentLayout = Instance.new("UIListLayout", ContentScroll)
-ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-ContentLayout.Padding = UDim.new(0, 10)
-
--- Глобальная функция создания модулей функций
-local function createFeatureModule(title, layoutOrder, hasSlider, defaultVal, minVal, maxVal)
-    local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(1, -10, 0, 50)
-    Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    Frame.BackgroundTransparency = 0.5
-    Frame.LayoutOrder = layoutOrder
-    Frame.Parent = ContentScroll
-    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
-    Instance.new("UIStroke", Frame).Color = Color3.fromRGB(50, 50, 50)
-
-    local Txt = Instance.new("TextLabel")
-    Txt.Size = UDim2.new(0, 200, 1, 0)
-    Txt.Position = UDim2.new(0, 15, 0, 0)
-    Txt.BackgroundTransparency = 1
-    Txt.Text = title
-    Txt.Font = Enum.Font.RobotoMono
-    Txt.TextSize = 16
-    Txt.TextColor3 = Color3.fromRGB(220, 220, 220)
-    Txt.TextXAlignment = Enum.TextXAlignment.Left
-    Txt.Parent = Frame
-
-    local Gear = Instance.new("TextButton")
-    Gear.Size = UDim2.new(0, 30, 0, 30)
-    Gear.Position = UDim2.new(1, -150, 0.5, -15)
-    Gear.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    Gear.Text = "⚙"
-    Gear.Font = Enum.Font.RobotoMono
-    Gear.TextSize = 18
-    Gear.TextColor3 = Color3.fromRGB(150, 150, 150)
-    Gear.Parent = Frame
-    Instance.new("UICorner", Gear).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIStroke", Gear).Color = Color3.fromRGB(60, 60, 60)
-
-    local Bind = Instance.new("TextButton")
-    Bind.Size = UDim2.new(0, 60, 0, 30)
-    Bind.Position = UDim2.new(1, -110, 0.5, -15)
-    Bind.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    Bind.Text = "[NONE]"
-    Bind.Font = Enum.Font.RobotoMono
-    Bind.TextSize = 12
-    Bind.TextColor3 = Color3.fromRGB(150, 150, 150)
-    Bind.Parent = Frame
-    Instance.new("UICorner", Bind).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIStroke", Bind).Color = Color3.fromRGB(60, 60, 60)
-
-    local Toggle = Instance.new("TextButton")
-    Toggle.Size = UDim2.new(0, 30, 0, 30)
-    Toggle.Position = UDim2.new(1, -40, 0.5, -15)
-    Toggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
-    Toggle.Text = ""
-    Toggle.Parent = Frame
-    Instance.new("UICorner", Toggle).CornerRadius = UDim.new(0, 6)
-    local TStroke = Instance.new("UIStroke", Toggle)
-    TStroke.Color = Color3.fromRGB(150, 50, 50)
-
-    local Settings = Instance.new("Frame")
-    Settings.Size = UDim2.new(1, -10, 0, hasSlider and 110 or 60)
-    Settings.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
-    Settings.BackgroundTransparency = 0.5
-    Settings.Visible = false
-    Settings.LayoutOrder = layoutOrder + 1
-    Settings.Parent = ContentScroll
-    Instance.new("UICorner", Settings).CornerRadius = UDim.new(0, 8)
-    Instance.new("UIStroke", Settings).Color = Color3.fromRGB(40, 40, 40)
-
-    Gear.MouseButton1Click:Connect(function() Settings.Visible = not Settings.Visible end)
+    btn.Parent = BootFrame
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", btn).Color = Color3.fromRGB(60, 60, 60)
     
-    local SliderBtn, SliderFill, SpeedLabel, BoolBtn
-    if hasSlider then
-        SpeedLabel = Instance.new("TextLabel")
-        SpeedLabel.Size = UDim2.new(0, 200, 0, 20)
-        SpeedLabel.Position = UDim2.new(0, 15, 0, 10)
-        SpeedLabel.BackgroundTransparency = 1
-        SpeedLabel.Text = "Value: " .. defaultVal
-        SpeedLabel.Font = Enum.Font.RobotoMono
-        SpeedLabel.TextSize = 14
-        SpeedLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-        SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
-        SpeedLabel.Parent = Settings
-
-        local SliderBg = Instance.new("Frame")
-        SliderBg.Size = UDim2.new(0, 200, 0, 6)
-        SliderBg.Position = UDim2.new(0, 15, 0, 35)
-        SliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        SliderBg.BorderSizePixel = 0
-        SliderBg.Parent = Settings
-        Instance.new("UICorner", SliderBg).CornerRadius = UDim.new(1, 0)
-
-        SliderFill = Instance.new("Frame")
-        SliderFill.Size = UDim2.new((defaultVal - minVal)/(maxVal - minVal), 0, 1, 0)
-        SliderFill.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
-        SliderFill.BorderSizePixel = 0
-        SliderFill.Parent = SliderBg
-        Instance.new("UICorner", SliderFill).CornerRadius = UDim.new(1, 0)
-
-        SliderBtn = Instance.new("TextButton")
-        SliderBtn.Size = UDim2.new(1, 0, 1, 20)
-        SliderBtn.Position = UDim2.new(0, 0, 0.5, 0)
-        SliderBtn.AnchorPoint = Vector2.new(0, 0.5)
-        SliderBtn.BackgroundTransparency = 1
-        SliderBtn.Text = ""
-        SliderBtn.Parent = SliderBg
-        
-        local MLabel = Instance.new("TextLabel")
-        MLabel.Size = UDim2.new(0, 200, 0, 30)
-        MLabel.Position = UDim2.new(0, 15, 0, 65)
-        MLabel.BackgroundTransparency = 1
-        MLabel.Text = "Show Mobile Button:"
-        MLabel.Font = Enum.Font.RobotoMono
-        MLabel.TextSize = 14
-        MLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-        MLabel.TextXAlignment = Enum.TextXAlignment.Left
-        MLabel.Parent = Settings
-        
-        BoolBtn = Instance.new("TextButton")
-        BoolBtn.Size = UDim2.new(0, 60, 0, 30)
-        BoolBtn.Position = UDim2.new(1, -70, 0, 65)
-        BoolBtn.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
-        BoolBtn.Text = "False"
-        BoolBtn.Font = Enum.Font.RobotoMono
-        BoolBtn.TextSize = 14
-        BoolBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        BoolBtn.Parent = Settings
-        Instance.new("UICorner", BoolBtn).CornerRadius = UDim.new(0, 6)
-        Instance.new("UIStroke", BoolBtn).Color = Color3.fromRGB(60, 60, 60)
-    else
-        local MLabel = Instance.new("TextLabel")
-        MLabel.Size = UDim2.new(0, 200, 0, 30)
-        MLabel.Position = UDim2.new(0, 15, 0, 15)
-        MLabel.BackgroundTransparency = 1
-        MLabel.Text = "Show Mobile Button:"
-        MLabel.Font = Enum.Font.RobotoMono
-        MLabel.TextSize = 14
-        MLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-        MLabel.TextXAlignment = Enum.TextXAlignment.Left
-        MLabel.Parent = Settings
-        
-        BoolBtn = Instance.new("TextButton")
-        BoolBtn.Size = UDim2.new(0, 60, 0, 30)
-        BoolBtn.Position = UDim2.new(1, -70, 0, 15)
-        BoolBtn.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
-        BoolBtn.Text = "False"
-        BoolBtn.Font = Enum.Font.RobotoMono
-        BoolBtn.TextSize = 14
-        BoolBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        BoolBtn.Parent = Settings
-        Instance.new("UICorner", BoolBtn).CornerRadius = UDim.new(0, 6)
-        Instance.new("UIStroke", BoolBtn).Color = Color3.fromRGB(60, 60, 60)
-    end
-
-    return Toggle, TStroke, Bind, BoolBtn, SliderBtn, SliderFill, SpeedLabel, Settings
+    btn.MouseButton1Click:Connect(function()
+        BootGui:Destroy()
+        LoadMainGUI(scaleFactor) -- Загружаем основное меню с выбранным масштабом
+    end)
 end
 
--- Создание модулей
-local FlyToggle, FlyStroke, FlyBindBtn, FlyBoolBtn, FlySlider, FlyFill, FlyLabel = createFeatureModule("Fly (Полет)", 1, true, 50, 10, 200)
-local NoclipToggle, NoclipStroke, NoclipBindBtn, NoclipBoolBtn = createFeatureModule("Noclip (Сквозь стены)", 3, false)
-local SpeedToggle, SpeedStroke, SpeedBindBtn, SpeedBoolBtn, SpeedSlider, SpeedFill, SpeedLabel = createFeatureModule("Speedhack (Скорость)", 5, true, 50, 16, 250)
-local SitToggle, SitStroke, SitBindBtn, SitBoolBtn = createFeatureModule("Sit (Сесть/Встать)", 7, false)
+createSizeBtn("Маленькое", 50, 0.8)
+createSizeBtn("Среднее", 100, 1.0)
+createSizeBtn("Большое", 150, 1.25)
 
 
--- ===========================
--- === ЛОГИКА ОКНА И DRAG ===
--- ===========================
+-- ==========================================
+-- === ЭТАП 2: ОСНОВНОЙ ИНТЕРФЕЙС И ЛОГИКА ===
+-- ==========================================
 
-local dragging, dragStart, startPos
-MainWindow.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainWindow.Position
+function LoadMainGUI(guiScaleFactor)
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = guiName .. "_Main"
+    ScreenGui.Parent = parent
+    ScreenGui.ResetOnSpawn = false
+
+    -- === Кнопка восстановления ===
+    local RestoreBtn = Instance.new("TextButton")
+    RestoreBtn.Size = UDim2.new(0, 100, 0, 40)
+    RestoreBtn.Position = UDim2.new(0, 20, 0, 20)
+    RestoreBtn.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
+    RestoreBtn.BackgroundTransparency = 0.15
+    RestoreBtn.Text = "sonya<3"
+    RestoreBtn.Font = Enum.Font.RobotoMono
+    RestoreBtn.TextSize = 16
+    RestoreBtn.TextColor3 = Color3.fromRGB(85, 85, 85)
+    RestoreBtn.Visible = false
+    RestoreBtn.Parent = ScreenGui
+    Instance.new("UICorner", RestoreBtn).CornerRadius = UDim.new(0, 4)
+    Instance.new("UIStroke", RestoreBtn).Color = Color3.fromRGB(68, 68, 68)
+    local RestoreScale = Instance.new("UIScale", RestoreBtn)
+    RestoreScale.Scale = guiScaleFactor
+
+    -- === Мобильные кнопки (Бинды на экране) ===
+    local mobileButtonsList = {}
+    local function createMobileBtn(name, text, yOffset)
+        local btn = Instance.new("TextButton")
+        btn.Name = "Mobile" .. name .. "Btn"
+        btn.Size = UDim2.new(0, 60, 0, 60)
+        btn.Position = UDim2.new(1, -80, 0.5, yOffset) 
+        btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+        btn.BackgroundTransparency = 0.3
+        btn.Text = text
+        btn.Font = Enum.Font.RobotoMono
+        btn.TextSize = 12
+        btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        btn.Visible = false
+        btn.Active = true
+        btn.Parent = ScreenGui
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 30)
+        Instance.new("UIStroke", btn).Color = Color3.fromRGB(68, 68, 68)
+        
+        local scale = Instance.new("UIScale", btn)
+        scale.Scale = guiScaleFactor
+        
+        table.insert(mobileButtonsList, btn)
+        return btn
     end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        MainWindow.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
-end)
 
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
-MinBtn.MouseButton1Click:Connect(function() MainWindow.Visible = false RestoreBtn.Visible = true end)
-RestoreBtn.MouseButton1Click:Connect(function() MainWindow.Visible = true RestoreBtn.Visible = false end)
-local isFullscreen = false
-FullBtn.MouseButton1Click:Connect(function()
-    isFullscreen = not isFullscreen
-    MainWindow.Size = isFullscreen and UDim2.new(1, 0, 1, 0) or UDim2.new(0, 850, 0, 550)
-    MainUICorner.CornerRadius = isFullscreen and UDim.new(0, 0) or UDim.new(0, 12)
+    local FlyMobileBtn = createMobileBtn("Fly", "+ Fly", -175)
+    local NoclipMobileBtn = createMobileBtn("Noclip", "Noclip", -105)
+    local SpeedMobileBtn = createMobileBtn("Speed", "Speed", -35)
+    local SitMobileBtn = createMobileBtn("Sit", "Sit", 35)
+    local ShiftLockMobileBtn = createMobileBtn("ShiftLock", "S-Lock", 105)
+    local SpinMobileBtn = createMobileBtn("Spin", "Spin", 175)
+
+    -- === Основное окно ===
+    local MainWindow = Instance.new("Frame")
+    MainWindow.Size = UDim2.new(0, 850, 0, 550)
     MainWindow.Position = UDim2.new(0.5, 0, 0.5, 0)
-end)
+    MainWindow.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainWindow.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    MainWindow.BackgroundTransparency = 0.15
+    MainWindow.BorderSizePixel = 0
+    MainWindow.ClipsDescendants = true
+    MainWindow.Active = true
+    MainWindow.Parent = ScreenGui
+    local MainUICorner = Instance.new("UICorner", MainWindow)
+    MainUICorner.CornerRadius = UDim.new(0, 12)
+    Instance.new("UIStroke", MainWindow).Color = Color3.fromRGB(40, 40, 40)
+    
+    -- Масштабирование главного окна
+    local MainScale = Instance.new("UIScale", MainWindow)
+    MainScale.Scale = guiScaleFactor
 
+    -- Левая панель
+    local LeftPanel = Instance.new("Frame")
+    LeftPanel.Size = UDim2.new(0, 220, 1, 0)
+    LeftPanel.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
+    LeftPanel.BackgroundTransparency = 0.2
+    LeftPanel.BorderSizePixel = 0
+    LeftPanel.Parent = MainWindow
+    local LeftPadding = Instance.new("UIPadding", LeftPanel)
+    LeftPadding.PaddingTop = UDim.new(0, 20)
+    LeftPadding.PaddingBottom = UDim.new(0, 20)
+    LeftPadding.PaddingLeft = UDim.new(0, 20)
+    LeftPadding.PaddingRight = UDim.new(0, 20)
+    local LeftLayout = Instance.new("UIListLayout", LeftPanel)
+    LeftLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    LeftLayout.Padding = UDim.new(0, 15)
 
--- ===========================
--- === ОБЩИЕ ПЕРЕМЕННЫЕ ===
--- ===========================
+    -- Кнопки управления (Закрыть, Свернуть)
+    local ControlsFrame = Instance.new("Frame")
+    ControlsFrame.Size = UDim2.new(1, 0, 0, 25)
+    ControlsFrame.BackgroundTransparency = 1
+    ControlsFrame.LayoutOrder = 1
+    ControlsFrame.Parent = LeftPanel
+    local ControlsLayout = Instance.new("UIListLayout", ControlsFrame)
+    ControlsLayout.FillDirection = Enum.FillDirection.Horizontal
+    ControlsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ControlsLayout.Padding = UDim.new(0, 8)
 
-local binds = {Fly = nil, Noclip = nil, Speed = nil, Sit = nil}
-local isBinding = {Fly = false, Noclip = false, Speed = false, Sit = false}
-local flySpeed, walkSpeedMod = 50, 50
+    local function createControlBtn(text, order)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 25, 0, 25)
+        btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        btn.BackgroundTransparency = 0.3
+        btn.Text = text
+        btn.Font = Enum.Font.RobotoMono
+        btn.TextSize = 14
+        btn.TextColor3 = Color3.fromRGB(120, 120, 120)
+        btn.LayoutOrder = order
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+        Instance.new("UIStroke", btn).Color = Color3.fromRGB(68, 68, 68)
+        btn.Parent = ControlsFrame
+        return btn
+    end
+    local CloseBtn = createControlBtn("✕", 1)
+    local MinBtn = createControlBtn("−", 2)
+    local FullBtn = createControlBtn("◻", 3)
 
+    local Logo = Instance.new("TextLabel")
+    Logo.Size = UDim2.new(1, 0, 0, 60)
+    Logo.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    Logo.BackgroundTransparency = 0.3
+    Logo.Text = "sonya<3"
+    Logo.Font = Enum.Font.RobotoMono
+    Logo.TextSize = 20
+    Logo.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Logo.LayoutOrder = 2
+    Logo.Parent = LeftPanel
+    Instance.new("UICorner", Logo).CornerRadius = UDim.new(0, 6)
+    Instance.new("UIStroke", Logo).Color = Color3.fromRGB(68, 68, 68)
 
--- ===========================
--- === 1. FLY ===
--- ===========================
-local isFlying, bg, bv = false, nil, nil
-local function toggleFly()
-    isFlying = not isFlying
-    if isFlying then
-        FlyToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
-        FlyStroke.Color = Color3.fromRGB(50, 150, 50)
-        FlyMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
-            char.Humanoid.PlatformStand = true
-            bg = Instance.new("BodyGyro", char.HumanoidRootPart)
-            bg.P = 9e4 bg.maxTorque = Vector3.new(9e9, 9e9, 9e9) bg.cframe = char.HumanoidRootPart.CFrame
-            bv = Instance.new("BodyVelocity", char.HumanoidRootPart)
-            bv.velocity = Vector3.new(0,0,0) bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
-            RunService:BindToRenderStep("SonyaFly", Enum.RenderPriority.Camera.Value, function()
-                if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-                local md = Vector3.new(0,0,0)
-                if UserInputService:IsKeyDown(Enum.KeyCode.W) then md = md + Camera.CFrame.LookVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.S) then md = md - Camera.CFrame.LookVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.D) then md = md + Camera.CFrame.RightVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.A) then md = md - Camera.CFrame.RightVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then md = md + Vector3.new(0,1,0) end
-                if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then md = md - Vector3.new(0,1,0) end
-                bg.cframe = Camera.CFrame bv.velocity = md * flySpeed
-            end)
+    local Separator = Instance.new("Frame")
+    Separator.Size = UDim2.new(0, 2, 1, 0)
+    Separator.Position = UDim2.new(0, 220, 0, 0)
+    Separator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Separator.BackgroundTransparency = 0.3
+    Separator.BorderSizePixel = 0
+    Separator.Parent = MainWindow
+
+    -- Правая панель (Скролл)
+    local RightPanel = Instance.new("Frame")
+    RightPanel.Size = UDim2.new(1, -222, 1, 0)
+    RightPanel.Position = UDim2.new(0, 222, 0, 0)
+    RightPanel.BackgroundTransparency = 1
+    RightPanel.Parent = MainWindow
+    local ContentScroll = Instance.new("ScrollingFrame")
+    ContentScroll.Size = UDim2.new(1, -40, 1, -40)
+    ContentScroll.Position = UDim2.new(0, 20, 0, 20)
+    ContentScroll.BackgroundTransparency = 1
+    ContentScroll.ScrollBarThickness = 4
+    ContentScroll.BorderSizePixel = 0
+    ContentScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    ContentScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ContentScroll.Parent = RightPanel
+    local ContentLayout = Instance.new("UIListLayout", ContentScroll)
+    ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ContentLayout.Padding = UDim.new(0, 10)
+
+    -- Функция создания модулей
+    local function createFeatureModule(title, layoutOrder, hasSlider, defaultVal, minVal, maxVal, sliderLabelPrefix)
+        local Frame = Instance.new("Frame")
+        Frame.Size = UDim2.new(1, -10, 0, 50)
+        Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+        Frame.BackgroundTransparency = 0.5
+        Frame.LayoutOrder = layoutOrder
+        Frame.Parent = ContentScroll
+        Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
+        Instance.new("UIStroke", Frame).Color = Color3.fromRGB(50, 50, 50)
+
+        local Txt = Instance.new("TextLabel")
+        Txt.Size = UDim2.new(0, 200, 1, 0)
+        Txt.Position = UDim2.new(0, 15, 0, 0)
+        Txt.BackgroundTransparency = 1
+        Txt.Text = title
+        Txt.Font = Enum.Font.RobotoMono
+        Txt.TextSize = 16
+        Txt.TextColor3 = Color3.fromRGB(220, 220, 220)
+        Txt.TextXAlignment = Enum.TextXAlignment.Left
+        Txt.Parent = Frame
+
+        local Gear = Instance.new("TextButton")
+        Gear.Size = UDim2.new(0, 30, 0, 30)
+        Gear.Position = UDim2.new(1, -150, 0.5, -15)
+        Gear.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        Gear.Text = "⚙"
+        Gear.Font = Enum.Font.RobotoMono
+        Gear.TextSize = 18
+        Gear.TextColor3 = Color3.fromRGB(150, 150, 150)
+        Gear.Parent = Frame
+        Instance.new("UICorner", Gear).CornerRadius = UDim.new(0, 6)
+        Instance.new("UIStroke", Gear).Color = Color3.fromRGB(60, 60, 60)
+
+        local Bind = Instance.new("TextButton")
+        Bind.Size = UDim2.new(0, 60, 0, 30)
+        Bind.Position = UDim2.new(1, -110, 0.5, -15)
+        Bind.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        Bind.Text = "[NONE]"
+        Bind.Font = Enum.Font.RobotoMono
+        Bind.TextSize = 12
+        Bind.TextColor3 = Color3.fromRGB(150, 150, 150)
+        Bind.Parent = Frame
+        Instance.new("UICorner", Bind).CornerRadius = UDim.new(0, 6)
+        Instance.new("UIStroke", Bind).Color = Color3.fromRGB(60, 60, 60)
+
+        local Toggle = Instance.new("TextButton")
+        Toggle.Size = UDim2.new(0, 30, 0, 30)
+        Toggle.Position = UDim2.new(1, -40, 0.5, -15)
+        Toggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+        Toggle.Text = ""
+        Toggle.Parent = Frame
+        Instance.new("UICorner", Toggle).CornerRadius = UDim.new(0, 6)
+        local TStroke = Instance.new("UIStroke", Toggle)
+        TStroke.Color = Color3.fromRGB(150, 50, 50)
+
+        local Settings = Instance.new("Frame")
+        Settings.Size = UDim2.new(1, -10, 0, hasSlider and 110 or 60)
+        Settings.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+        Settings.BackgroundTransparency = 0.5
+        Settings.Visible = false
+        Settings.LayoutOrder = layoutOrder + 1
+        Settings.Parent = ContentScroll
+        Instance.new("UICorner", Settings).CornerRadius = UDim.new(0, 8)
+        Instance.new("UIStroke", Settings).Color = Color3.fromRGB(40, 40, 40)
+
+        Gear.MouseButton1Click:Connect(function() Settings.Visible = not Settings.Visible end)
+        
+        local SliderBtn, SliderFill, SLabel, BoolBtn
+        if hasSlider then
+            SLabel = Instance.new("TextLabel")
+            SLabel.Size = UDim2.new(0, 200, 0, 20)
+            SLabel.Position = UDim2.new(0, 15, 0, 10)
+            SLabel.BackgroundTransparency = 1
+            SLabel.Text = sliderLabelPrefix .. ": " .. defaultVal
+            SLabel.Font = Enum.Font.RobotoMono
+            SLabel.TextSize = 14
+            SLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+            SLabel.TextXAlignment = Enum.TextXAlignment.Left
+            SLabel.Parent = Settings
+
+            local SliderBg = Instance.new("Frame")
+            SliderBg.Size = UDim2.new(0, 200, 0, 6)
+            SliderBg.Position = UDim2.new(0, 15, 0, 35)
+            SliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            SliderBg.BorderSizePixel = 0
+            SliderBg.Parent = Settings
+            Instance.new("UICorner", SliderBg).CornerRadius = UDim.new(1, 0)
+
+            SliderFill = Instance.new("Frame")
+            SliderFill.Size = UDim2.new((defaultVal - minVal)/(maxVal - minVal), 0, 1, 0)
+            SliderFill.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+            SliderFill.BorderSizePixel = 0
+            SliderFill.Parent = SliderBg
+            Instance.new("UICorner", SliderFill).CornerRadius = UDim.new(1, 0)
+
+            SliderBtn = Instance.new("TextButton")
+            SliderBtn.Size = UDim2.new(1, 0, 1, 20)
+            SliderBtn.Position = UDim2.new(0, 0, 0.5, 0)
+            SliderBtn.AnchorPoint = Vector2.new(0, 0.5)
+            SliderBtn.BackgroundTransparency = 1
+            SliderBtn.Text = ""
+            SliderBtn.Parent = SliderBg
+            
+            local MLabel = Instance.new("TextLabel")
+            MLabel.Size = UDim2.new(0, 200, 0, 30)
+            MLabel.Position = UDim2.new(0, 15, 0, 65)
+            MLabel.BackgroundTransparency = 1
+            MLabel.Text = "Показать кнопку на экране:"
+            MLabel.Font = Enum.Font.RobotoMono
+            MLabel.TextSize = 14
+            MLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+            MLabel.TextXAlignment = Enum.TextXAlignment.Left
+            MLabel.Parent = Settings
+            
+            BoolBtn = Instance.new("TextButton")
+            BoolBtn.Size = UDim2.new(0, 60, 0, 30)
+            BoolBtn.Position = UDim2.new(1, -70, 0, 65)
+            BoolBtn.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+            BoolBtn.Text = "False"
+            BoolBtn.Font = Enum.Font.RobotoMono
+            BoolBtn.TextSize = 14
+            BoolBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            BoolBtn.Parent = Settings
+            Instance.new("UICorner", BoolBtn).CornerRadius = UDim.new(0, 6)
+            Instance.new("UIStroke", BoolBtn).Color = Color3.fromRGB(60, 60, 60)
+        else
+            local MLabel = Instance.new("TextLabel")
+            MLabel.Size = UDim2.new(0, 200, 0, 30)
+            MLabel.Position = UDim2.new(0, 15, 0, 15)
+            MLabel.BackgroundTransparency = 1
+            MLabel.Text = "Показать кнопку на экране:"
+            MLabel.Font = Enum.Font.RobotoMono
+            MLabel.TextSize = 14
+            MLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+            MLabel.TextXAlignment = Enum.TextXAlignment.Left
+            MLabel.Parent = Settings
+            
+            BoolBtn = Instance.new("TextButton")
+            BoolBtn.Size = UDim2.new(0, 60, 0, 30)
+            BoolBtn.Position = UDim2.new(1, -70, 0, 15)
+            BoolBtn.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+            BoolBtn.Text = "False"
+            BoolBtn.Font = Enum.Font.RobotoMono
+            BoolBtn.TextSize = 14
+            BoolBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            BoolBtn.Parent = Settings
+            Instance.new("UICorner", BoolBtn).CornerRadius = UDim.new(0, 6)
+            Instance.new("UIStroke", BoolBtn).Color = Color3.fromRGB(60, 60, 60)
         end
-    else
-        FlyToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
-        FlyStroke.Color = Color3.fromRGB(150, 50, 50)
-        FlyMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-        RunService:UnbindFromRenderStep("SonyaFly")
-        if bg then bg:Destroy() end if bv then bv:Destroy() end
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then char.Humanoid.PlatformStand = false end
+
+        return Toggle, TStroke, Bind, BoolBtn, SliderBtn, SliderFill, SLabel
     end
-end
-FlyToggle.MouseButton1Click:Connect(toggleFly)
 
--- Слайдер Fly
-local isSlidingFly = false
-FlySlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingFly = true end end)
-UserInputService.InputChanged:Connect(function(input)
-    if isSlidingFly and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local pos = math.clamp((input.Position.X - FlySlider.Parent.AbsolutePosition.X) / FlySlider.Parent.AbsoluteSize.X, 0, 1)
-        FlyFill.Size = UDim2.new(pos, 0, 1, 0)
-        flySpeed = math.floor(10 + (200 - 10) * pos) FlyLabel.Text = "Fly Speed: " .. flySpeed
-    end
-end)
-UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingFly = false end end)
+    -- Создаем модули
+    local FlyToggle, FlyStroke, FlyBindBtn, FlyBoolBtn, FlySlider, FlyFill, FlyLabel = createFeatureModule("Fly (Полет)", 1, true, 50, 10, 200, "Скорость")
+    local NoclipToggle, NoclipStroke, NoclipBindBtn, NoclipBoolBtn = createFeatureModule("Noclip (Сквозь стены)", 3, false)
+    local SpeedToggle, SpeedStroke, SpeedBindBtn, SpeedBoolBtn, SpeedSlider, SpeedFill, SpeedLabel = createFeatureModule("Speedhack (Скорость)", 5, true, 50, 16, 250, "WalkSpeed")
+    local SitToggle, SitStroke, SitBindBtn, SitBoolBtn = createFeatureModule("Sit (Сесть/Встать)", 7, false)
+    local ShiftLockToggle, ShiftLockStroke, ShiftLockBindBtn, ShiftLockBoolBtn = createFeatureModule("Shift Lock (Камера)", 9, false)
+    local SpinToggle, SpinStroke, SpinBindBtn, SpinBoolBtn, SpinSlider, SpinFill, SpinLabel = createFeatureModule("Spin (Крутиться)", 11, true, 20, 5, 100, "Скорость вращения")
 
-
--- ===========================
--- === 2. NOCLIP ===
--- ===========================
-local isNoclip, noclipConnection = false, nil
-local function toggleNoclip()
-    isNoclip = not isNoclip
-    if isNoclip then
-        NoclipToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
-        NoclipStroke.Color = Color3.fromRGB(50, 150, 50)
-        NoclipMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
-        noclipConnection = RunService.Stepped:Connect(function()
-            local char = LocalPlayer.Character
-            if char then for _, v in ipairs(char:GetDescendants()) do if v:IsA("BasePart") and v.CanCollide then v.CanCollide = false end end end
-        end)
-    else
-        NoclipToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
-        NoclipStroke.Color = Color3.fromRGB(150, 50, 50)
-        NoclipMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-        if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
-    end
-end
-NoclipToggle.MouseButton1Click:Connect(toggleNoclip)
-
-
--- ===========================
--- === 3. SPEEDHACK ===
--- ===========================
-local isSpeedhack, speedConnection = false, nil
-local function toggleSpeedhack()
-    isSpeedhack = not isSpeedhack
-    if isSpeedhack then
-        SpeedToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
-        SpeedStroke.Color = Color3.fromRGB(50, 150, 50)
-        SpeedMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
-        -- Постоянно обновляем скорость (чтобы игра не сбросила её)
-        speedConnection = RunService.Heartbeat:Connect(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.WalkSpeed = walkSpeedMod
-            end
-        end)
-    else
-        SpeedToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
-        SpeedStroke.Color = Color3.fromRGB(150, 50, 50)
-        SpeedMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-        if speedConnection then speedConnection:Disconnect() speedConnection = nil end
-        -- Возвращаем дефолтную скорость
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then char.Humanoid.WalkSpeed = 16 end
-    end
-end
-SpeedToggle.MouseButton1Click:Connect(toggleSpeedhack)
-
--- Слайдер Speedhack
-local isSlidingSpeed = false
-SpeedSlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingSpeed = true end end)
-UserInputService.InputChanged:Connect(function(input)
-    if isSlidingSpeed and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local pos = math.clamp((input.Position.X - SpeedSlider.Parent.AbsolutePosition.X) / SpeedSlider.Parent.AbsoluteSize.X, 0, 1)
-        SpeedFill.Size = UDim2.new(pos, 0, 1, 0)
-        walkSpeedMod = math.floor(16 + (250 - 16) * pos) SpeedLabel.Text = "WalkSpeed: " .. walkSpeedMod
-    end
-end)
-UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingSpeed = false end end)
-
-
--- ===========================
--- === 4. SIT (СЕСТЬ/ВСТАТЬ) ===
--- ===========================
-local function toggleSit()
-    local char = LocalPlayer.Character
-    if not char then 
-        warn("Скрипт Sit: Персонаж (Character) не найден!") 
-        return 
-    end
-    
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then 
-        warn("Скрипт Sit: Объект Humanoid не найден внутри персонажа!") 
-        return 
-    end
-    
-    -- Переключение состояния (True / False)
-    hum.Sit = not hum.Sit
-    
-    -- Анимация кнопки
-    SitToggle.BackgroundColor3 = hum.Sit and Color3.fromRGB(10, 30, 10) or Color3.fromRGB(30, 10, 10)
-    SitStroke.Color = hum.Sit and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
-end
-SitToggle.MouseButton1Click:Connect(toggleSit)
-
-
--- ===========================
--- === БИНДЫ И МОБ. КНОПКИ ===
--- ===========================
-
-local function setupBind(btn, keyName, actionFunc)
-    btn.MouseButton1Click:Connect(function() btn.Text = "..." isBinding[keyName] = true end)
-end
-setupBind(FlyBindBtn, "Fly") setupBind(NoclipBindBtn, "Noclip") setupBind(SpeedBindBtn, "Speed") setupBind(SitBindBtn, "Sit")
-
-UserInputService.InputBegan:Connect(function(input, gp)
-    if input.UserInputType == Enum.UserInputType.Keyboard then
-        for keyName, binding in pairs(isBinding) do
-            if binding then
-                local btnUI = keyName == "Fly" and FlyBindBtn or keyName == "Noclip" and NoclipBindBtn or keyName == "Speed" and SpeedBindBtn or SitBindBtn
-                if input.KeyCode == Enum.KeyCode.Escape then
-                    binds[keyName] = nil btnUI.Text = "[NONE]"
-                else
-                    binds[keyName] = input.KeyCode btnUI.Text = "[" .. tostring(input.KeyCode):gsub("Enum.KeyCode.", "") .. "]"
-                end
-                isBinding[keyName] = false return
-            end
-        end
-    end
-    
-    if not gp then
-        if binds.Fly and input.KeyCode == binds.Fly then toggleFly() end
-        if binds.Noclip and input.KeyCode == binds.Noclip then toggleNoclip() end
-        if binds.Speed and input.KeyCode == binds.Speed then toggleSpeedhack() end
-        if binds.Sit and input.KeyCode == binds.Sit then toggleSit() end
-    end
-end)
-
-local function makeMobileBtnDraggable(btn, actionFunc)
-    local dragActive, hasDragged, dStart, sPos = false, false, nil, nil
-    btn.InputBegan:Connect(function(input)
+    -- Drag окна
+    local dragging, dragStart, startPos
+    MainWindow.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragActive = true hasDragged = false dStart = input.Position sPos = btn.Position
+            dragging = true dragStart = input.Position startPos = MainWindow.Position
         end
     end)
     UserInputService.InputChanged:Connect(function(input)
-        if dragActive and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dStart
-            if delta.Magnitude > 5 then hasDragged = true end
-            btn.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + delta.X, sPos.Y.Scale, sPos.Y.Offset + delta.Y)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            MainWindow.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
     UserInputService.InputEnded:Connect(function(input)
-        if dragActive and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-            dragActive = false if not hasDragged then actionFunc() end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
+    end)
+
+    CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+    MinBtn.MouseButton1Click:Connect(function() MainWindow.Visible = false RestoreBtn.Visible = true end)
+    RestoreBtn.MouseButton1Click:Connect(function() MainWindow.Visible = true RestoreBtn.Visible = false end)
+    local isFullscreen = false
+    FullBtn.MouseButton1Click:Connect(function()
+        isFullscreen = not isFullscreen
+        MainWindow.Size = isFullscreen and UDim2.new(1, 0, 1, 0) or UDim2.new(0, 850, 0, 550)
+        MainUICorner.CornerRadius = isFullscreen and UDim.new(0, 0) or UDim.new(0, 12)
+        MainWindow.Position = UDim2.new(0.5, 0, 0.5, 0)
+    end)
+
+    -- ===========================
+    -- === 1. FLY (Исправлено для мобилок) ===
+    -- ===========================
+    local isFlying, bg, bv = false, nil, nil
+    local function toggleFly()
+        isFlying = not isFlying
+        if isFlying then
+            FlyToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            FlyStroke.Color = Color3.fromRGB(50, 150, 50)
+            FlyMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
+                char.Humanoid.PlatformStand = true
+                bg = Instance.new("BodyGyro", char.HumanoidRootPart)
+                bg.P = 9e4 bg.maxTorque = Vector3.new(9e9, 9e9, 9e9) bg.cframe = char.HumanoidRootPart.CFrame
+                bv = Instance.new("BodyVelocity", char.HumanoidRootPart)
+                bv.velocity = Vector3.new(0,0,0) bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+                
+                RunService:BindToRenderStep("SonyaFly", Enum.RenderPriority.Camera.Value, function()
+                    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+                    
+                    local md = Vector3.new(0,0,0)
+                    
+                    -- Интеграция с мобильным джойстиком (PlayerModule)
+                    pcall(function()
+                        local playerModule = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
+                        local controls = playerModule:GetControls()
+                        local moveVector = controls:GetMoveVector() -- Получаем вектор движения (включая джойстик)
+                        md = (Camera.CFrame.RightVector * moveVector.X) + (Camera.CFrame.LookVector * -moveVector.Z)
+                    end)
+                    
+                    -- Резерв для ПК
+                    if md.Magnitude == 0 then
+                        if UserInputService:IsKeyDown(Enum.KeyCode.W) then md = md + Camera.CFrame.LookVector end
+                        if UserInputService:IsKeyDown(Enum.KeyCode.S) then md = md - Camera.CFrame.LookVector end
+                        if UserInputService:IsKeyDown(Enum.KeyCode.D) then md = md + Camera.CFrame.RightVector end
+                        if UserInputService:IsKeyDown(Enum.KeyCode.A) then md = md - Camera.CFrame.RightVector end
+                    end
+                    
+                    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then md = md + Vector3.new(0,1,0) end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then md = md - Vector3.new(0,1,0) end
+                    
+                    bg.cframe = Camera.CFrame 
+                    bv.velocity = md * flySpeed
+                end)
+            end
+        else
+            FlyToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+            FlyStroke.Color = Color3.fromRGB(150, 50, 50)
+            FlyMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+            RunService:UnbindFromRenderStep("SonyaFly")
+            if bg then bg:Destroy() end if bv then bv:Destroy() end
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then char.Humanoid.PlatformStand = false end
+        end
+    end
+    FlyToggle.MouseButton1Click:Connect(toggleFly)
+    local isSlidingFly = false
+    FlySlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingFly = true end end)
+    UserInputService.InputChanged:Connect(function(input)
+        if isSlidingFly and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local pos = math.clamp((input.Position.X - FlySlider.Parent.AbsolutePosition.X) / FlySlider.Parent.AbsoluteSize.X, 0, 1)
+            FlyFill.Size = UDim2.new(pos, 0, 1, 0)
+            flySpeed = math.floor(10 + (200 - 10) * pos) FlyLabel.Text = "Скорость: " .. flySpeed
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingFly = false end end)
+
+    -- ===========================
+    -- === 2. NOCLIP ===
+    -- ===========================
+    local isNoclip, noclipConnection = false, nil
+    local function toggleNoclip()
+        isNoclip = not isNoclip
+        if isNoclip then
+            NoclipToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            NoclipStroke.Color = Color3.fromRGB(50, 150, 50)
+            NoclipMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            noclipConnection = RunService.Stepped:Connect(function()
+                local char = LocalPlayer.Character
+                if char then for _, v in ipairs(char:GetDescendants()) do if v:IsA("BasePart") and v.CanCollide then v.CanCollide = false end end end
+            end)
+        else
+            NoclipToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+            NoclipStroke.Color = Color3.fromRGB(150, 50, 50)
+            NoclipMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+            if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
+        end
+    end
+    NoclipToggle.MouseButton1Click:Connect(toggleNoclip)
+
+    -- ===========================
+    -- === 3. SPEEDHACK (БЕССМЕРТНЫЙ) ===
+    -- ===========================
+    -- Теперь он проверяет скорость каждый кадр, поэтому не сбросится даже при спавне!
+    local speedConnection = nil
+    local function toggleSpeedhack()
+        isSpeedhack = not isSpeedhack
+        if isSpeedhack then
+            SpeedToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            SpeedStroke.Color = Color3.fromRGB(50, 150, 50)
+            SpeedMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+        else
+            SpeedToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+            SpeedStroke.Color = Color3.fromRGB(150, 50, 50)
+            SpeedMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+            -- Возвращаем дефолтную скорость при выключении
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then char.Humanoid.WalkSpeed = 16 end
+        end
+    end
+    SpeedToggle.MouseButton1Click:Connect(toggleSpeedhack)
+    
+    -- Сердце SpeedHack (работает постоянно)
+    RunService.Heartbeat:Connect(function()
+        if isSpeedhack then
+            local char = LocalPlayer.Character
+            if char then
+                local hum = char:FindFirstChild("Humanoid")
+                if hum then
+                    hum.WalkSpeed = walkSpeedMod
+                end
+            end
+        end
+    end)
+
+    local isSlidingSpeed = false
+    SpeedSlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingSpeed = true end end)
+    UserInputService.InputChanged:Connect(function(input)
+        if isSlidingSpeed and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local pos = math.clamp((input.Position.X - SpeedSlider.Parent.AbsolutePosition.X) / SpeedSlider.Parent.AbsoluteSize.X, 0, 1)
+            SpeedFill.Size = UDim2.new(pos, 0, 1, 0)
+            walkSpeedMod = math.floor(16 + (250 - 16) * pos) SpeedLabel.Text = "WalkSpeed: " .. walkSpeedMod
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingSpeed = false end end)
+
+    -- ===========================
+    -- === 4. SIT ===
+    -- ===========================
+    local function toggleSit()
+        local char = LocalPlayer.Character
+        if not char then warn("Sit: Персонаж не найден!") return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then warn("Sit: Humanoid не найден!") return end
+        hum.Sit = not hum.Sit
+        SitToggle.BackgroundColor3 = hum.Sit and Color3.fromRGB(10, 30, 10) or Color3.fromRGB(30, 10, 10)
+        SitStroke.Color = hum.Sit and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+    end
+    SitToggle.MouseButton1Click:Connect(toggleSit)
+
+    -- ===========================
+    -- === 5. SHIFT LOCK (Новая система) ===
+    -- ===========================
+    local isShiftLock, shiftConn = false, nil
+    local function toggleShiftLock()
+        isShiftLock = not isShiftLock
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChild("Humanoid")
+        
+        if isShiftLock then
+            ShiftLockToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            ShiftLockStroke.Color = Color3.fromRGB(50, 150, 50)
+            ShiftLockMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            
+            shiftConn = RunService.RenderStepped:Connect(function()
+                -- Блокируем мышь в центре экрана
+                UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+                if char and char:FindFirstChild("HumanoidRootPart") and hum then
+                    hum.AutoRotate = false -- Отключаем стандартный поворот
+                    hum.CameraOffset = Vector3.new(1.75, 0, 0) -- Сдвиг камеры за плечо
+                    -- Синхронизируем поворот персонажа с камерой
+                    local rootPos = char.HumanoidRootPart.Position
+                    local lookVec = Camera.CFrame.LookVector
+                    char.HumanoidRootPart.CFrame = CFrame.new(rootPos, rootPos + Vector3.new(lookVec.X, 0, lookVec.Z))
+                end
+            end)
+        else
+            ShiftLockToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+            ShiftLockStroke.Color = Color3.fromRGB(150, 50, 50)
+            ShiftLockMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+            
+            if shiftConn then shiftConn:Disconnect() end
+            UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+            if hum then
+                hum.AutoRotate = true
+                hum.CameraOffset = Vector3.new(0, 0, 0)
+            end
+        end
+    end
+    ShiftLockToggle.MouseButton1Click:Connect(toggleShiftLock)
+
+    -- ===========================
+    -- === 6. SPIN (Крутилка) ===
+    -- ===========================
+    local isSpin, spinConn = false, nil
+    local function toggleSpin()
+        isSpin = not isSpin
+        if isSpin then
+            SpinToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            SpinStroke.Color = Color3.fromRGB(50, 150, 50)
+            SpinMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            
+            spinConn = RunService.RenderStepped:Connect(function()
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    -- Вращение вокруг оси Y на каждом кадре
+                    char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(spinSpeedMod), 0)
+                end
+            end)
+        else
+            SpinToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+            SpinStroke.Color = Color3.fromRGB(150, 50, 50)
+            SpinMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+            if spinConn then spinConn:Disconnect() end
+        end
+    end
+    SpinToggle.MouseButton1Click:Connect(toggleSpin)
+
+    local isSlidingSpin = false
+    SpinSlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingSpin = true end end)
+    UserInputService.InputChanged:Connect(function(input)
+        if isSlidingSpin and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local pos = math.clamp((input.Position.X - SpinSlider.Parent.AbsolutePosition.X) / SpinSlider.Parent.AbsoluteSize.X, 0, 1)
+            SpinFill.Size = UDim2.new(pos, 0, 1, 0)
+            spinSpeedMod = math.floor(5 + (100 - 5) * pos) SpinLabel.Text = "Скорость вращения: " .. spinSpeedMod
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingSpin = false end end)
+
+
+    -- =============================================
+    -- === УМНЫЕ МОБИЛЬНЫЕ КНОПКИ (БЛОКИРОВКА 5 СЕК) ===
+    -- =============================================
+    local function makeMobileBtnDraggable(btn, actionFunc)
+        local dragActive, hasDragged = false, false
+        local dStart, sPos = nil, nil
+        local isLocked = false
+        local holdTick = 0
+        local holdRoutine = nil
+
+        btn.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragActive = true
+                hasDragged = false
+                dStart = input.Position
+                sPos = btn.Position
+                
+                holdTick = tick()
+                
+                -- Запускаем таймер проверки удержания
+                holdRoutine = task.spawn(function()
+                    while dragActive and not hasDragged do
+                        if tick() - holdTick >= 5 then
+                            isLocked = not isLocked
+                            if isLocked then
+                                -- Заблокировано (серый/прозрачный)
+                                btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+                                btn.BackgroundTransparency = 0.7
+                                btn.Text = btn.Text .. "\n(LOCKED)"
+                            else
+                                -- Разблокировано
+                                btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+                                btn.BackgroundTransparency = 0.3
+                                btn.Text = string.gsub(btn.Text, "\n%(LOCKED%)", "")
+                            end
+                            dragActive = false -- Прерываем drag, так как сработала блокировка
+                            break
+                        end
+                        task.wait(0.1)
+                    end
+                end)
+            end
+        end)
+
+        UserInputService.InputChanged:Connect(function(input)
+            if dragActive and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local delta = input.Position - dStart
+                -- Если палец сдвинулся больше чем на 5 пикселей — это не удержание, а перетаскивание
+                if delta.Magnitude > 5 then
+                    hasDragged = true
+                end
+                
+                -- Перемещаем кнопку, если она НЕ заблокирована
+                if hasDragged and not isLocked then
+                    btn.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + delta.X, sPos.Y.Scale, sPos.Y.Offset + delta.Y)
+                end
+            end
+        end)
+
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragActive = false
+                -- Если не перетаскивали и удерживали меньше 5 секунд — это обычный клик (запуск функции)
+                if not hasDragged and (tick() - holdTick < 5) then
+                    actionFunc()
+                end
+            end
+        end)
+    end
+
+    makeMobileBtnDraggable(FlyMobileBtn, toggleFly)
+    makeMobileBtnDraggable(NoclipMobileBtn, toggleNoclip)
+    makeMobileBtnDraggable(SpeedMobileBtn, toggleSpeedhack)
+    makeMobileBtnDraggable(SitMobileBtn, toggleSit)
+    makeMobileBtnDraggable(ShiftLockMobileBtn, toggleShiftLock)
+    makeMobileBtnDraggable(SpinMobileBtn, toggleSpin)
+
+    local function setupMobileShow(boolBtn, mobileBtn)
+        local isShown = false
+        boolBtn.MouseButton1Click:Connect(function()
+            isShown = not isShown
+            mobileBtn.Visible = isShown
+            boolBtn.Text = isShown and "True" or "False"
+            boolBtn.TextColor3 = isShown and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
+            boolBtn.BackgroundColor3 = isShown and Color3.fromRGB(10, 30, 10) or Color3.fromRGB(30, 10, 10)
+        end)
+    end
+    setupMobileShow(FlyBoolBtn, FlyMobileBtn)
+    setupMobileShow(NoclipBoolBtn, NoclipMobileBtn)
+    setupMobileShow(SpeedBoolBtn, SpeedMobileBtn)
+    setupMobileShow(SitBoolBtn, SitMobileBtn)
+    setupMobileShow(ShiftLockBoolBtn, ShiftLockMobileBtn)
+    setupMobileShow(SpinBoolBtn, SpinMobileBtn)
+
+    -- ===========================
+    -- === БИНДЫ С КЛАВИАТУРЫ ===
+    -- ===========================
+    local function setupBind(btn, keyName)
+        btn.MouseButton1Click:Connect(function() btn.Text = "..." isBinding[keyName] = true end)
+    end
+    setupBind(FlyBindBtn, "Fly") setupBind(NoclipBindBtn, "Noclip") setupBind(SpeedBindBtn, "Speed") 
+    setupBind(SitBindBtn, "Sit") setupBind(ShiftLockBindBtn, "ShiftLock") setupBind(SpinBindBtn, "Spin")
+
+    UserInputService.InputBegan:Connect(function(input, gp)
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            for keyName, binding in pairs(isBinding) do
+                if binding then
+                    local btnUI = keyName == "Fly" and FlyBindBtn or keyName == "Noclip" and NoclipBindBtn or keyName == "Speed" and SpeedBindBtn or keyName == "Sit" and SitBindBtn or keyName == "ShiftLock" and ShiftLockBindBtn or SpinBindBtn
+                    if input.KeyCode == Enum.KeyCode.Escape then
+                        binds[keyName] = nil btnUI.Text = "[NONE]"
+                    else
+                        binds[keyName] = input.KeyCode btnUI.Text = "[" .. tostring(input.KeyCode):gsub("Enum.KeyCode.", "") .. "]"
+                    end
+                    isBinding[keyName] = false return
+                end
+            end
+        end
+        
+        if not gp then
+            if binds.Fly and input.KeyCode == binds.Fly then toggleFly() end
+            if binds.Noclip and input.KeyCode == binds.Noclip then toggleNoclip() end
+            if binds.Speed and input.KeyCode == binds.Speed then toggleSpeedhack() end
+            if binds.Sit and input.KeyCode == binds.Sit then toggleSit() end
+            if binds.ShiftLock and input.KeyCode == binds.ShiftLock then toggleShiftLock() end
+            if binds.Spin and input.KeyCode == binds.Spin then toggleSpin() end
         end
     end)
 end
-makeMobileBtnDraggable(FlyMobileBtn, toggleFly)
-makeMobileBtnDraggable(NoclipMobileBtn, toggleNoclip)
-makeMobileBtnDraggable(SpeedMobileBtn, toggleSpeedhack)
-makeMobileBtnDraggable(SitMobileBtn, toggleSit)
-
-local function setupMobileShow(boolBtn, mobileBtn)
-    local isShown = false
-    boolBtn.MouseButton1Click:Connect(function()
-        isShown = not isShown
-        mobileBtn.Visible = isShown
-        boolBtn.Text = isShown and "True" or "False"
-        boolBtn.TextColor3 = isShown and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
-        boolBtn.BackgroundColor3 = isShown and Color3.fromRGB(10, 30, 10) or Color3.fromRGB(30, 10, 10)
-    end)
-end
-setupMobileShow(FlyBoolBtn, FlyMobileBtn)
-setupMobileShow(NoclipBoolBtn, NoclipMobileBtn)
-setupMobileShow(SpeedBoolBtn, SpeedMobileBtn)
-setupMobileShow(SitBoolBtn, SitMobileBtn)
-
--- Анимации интерфейса
-TweenService:Create(Separator, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {BackgroundTransparency = 0.8}):Play()
-TweenService:Create(SepGlow, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {Transparency = 1}):Play()
