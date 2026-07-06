@@ -8,7 +8,7 @@ local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-local guiName = "SonyaGUI_V10_Fixed_Aim"
+local guiName = "SonyaGUI_V10_Final_Aim"
 
 -- Определение родителя
 local parent = nil
@@ -34,17 +34,15 @@ local isBinding = {Fly = false, Noclip = false, Speed = false, Sit = false, Shif
 local flySpeed, walkSpeedMod, spinSpeedMod = 50, 50, 20
 local isSpeedhack = false
 
--- Настройки Аимбота
+-- Настройки Аимбота (Prediction полностью удален)
 local AimSettings = {
     Enabled = false,
     FOVVisible = false,
     FOVRadius = 150,
     Smoothness = 0.2, 
-    Prediction = true,
-    PredictionAmount = 0.165,
     TargetParts = {"Head", "HumanoidRootPart", "UpperTorso", "LowerTorso"},
-    TeamCheck = false, -- Отключено по умолчанию для стабильности тестов
-    WallCheck = false  -- Отключено по умолчанию для стабильности тестов
+    TeamCheck = false, 
+    WallCheck = false  
 }
 
 -- Создание FOV круга через Drawing API
@@ -75,7 +73,7 @@ BootFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 BootFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 BootFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 BootFrame.BackgroundTransparency = 0.1
-BootFrame.Parent = BootGui
+BootFrame.Parent = BootFrame.Parent and BootGui
 Instance.new("UICorner", BootFrame).CornerRadius = UDim.new(0, 12)
 Instance.new("UIStroke", BootFrame).Color = Color3.fromRGB(80, 80, 80)
 
@@ -345,6 +343,7 @@ function LoadMainGUI(guiScaleFactor)
         Settings.LayoutOrder = layoutOrder + 1
         Settings.Parent = ContentScroll
         Instance.new("UICorner", Settings).CornerRadius = UDim.new(0, 8)
+        Settings.Parent = Settings.Parent and ContentScroll
         Instance.new("UIStroke", Settings).Color = Color3.fromRGB(40, 40, 40)
 
         Gear.MouseButton1Click:Connect(function() Settings.Visible = not Settings.Visible end)
@@ -979,16 +978,18 @@ function LoadMainGUI(guiScaleFactor)
     end
     ESPToggle.MouseButton1Click:Connect(toggleESP)
 
-    -- ============================================
-    -- === ИСПРАВЛЕННАЯ НАДЁЖНАЯ ЛОГИКА АИМБОТА ===
-    -- ============================================
+    -- ====================================================
+    -- === СТАБИЛИЗИРОВАННЫЙ АИМБОТ БЕЗ PREDICTION (МЕРДЖ) ===
+    -- ====================================================
     local isAiming = false
+    local CurrentTargetPart = nil 
     
     local function toggleAimbot()
         AimSettings.Enabled = not AimSettings.Enabled
         AimbotToggle.BackgroundColor3 = AimSettings.Enabled and Color3.fromRGB(10, 30, 10) or Color3.fromRGB(30, 10, 10)
         AimbotStroke.Color = AimSettings.Enabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
         AimbotMobileBtn.BackgroundColor3 = AimSettings.Enabled and Color3.fromRGB(10, 30, 10) or Color3.fromRGB(15, 15, 15)
+        if not AimSettings.Enabled then CurrentTargetPart = nil end
     end
     AimbotToggle.MouseButton1Click:Connect(toggleAimbot)
 
@@ -1005,7 +1006,10 @@ function LoadMainGUI(guiScaleFactor)
         if input.UserInputType == Enum.UserInputType.MouseButton2 then isAiming = true end
     end)
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton2 then isAiming = false end
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then 
+            isAiming = false 
+            CurrentTargetPart = nil 
+        end
     end)
 
     local function getBestPart(char)
@@ -1023,9 +1027,29 @@ function LoadMainGUI(guiScaleFactor)
     end
 
     local function getClosestTarget()
+        local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+        -- Target Lock: держим текущую цель, если она в FOV и жива
+        if CurrentTargetPart and CurrentTargetPart.Parent and CurrentTargetPart.Parent:FindFirstChild("Humanoid") then
+            local hum = CurrentTargetPart.Parent.Humanoid
+            if hum.Health > 0 then
+                local partPos, onScreen = Camera:WorldToViewportPoint(CurrentTargetPart.Position)
+                local distance = (Vector2.new(partPos.X, partPos.Y) - screenCenter).Magnitude
+                
+                if onScreen and distance <= AimSettings.FOVRadius then
+                    if AimSettings.WallCheck then
+                        if checkVisibility(CurrentTargetPart) then return CurrentTargetPart end
+                    else
+                        return CurrentTargetPart
+                    end
+                end
+            end
+        end
+
+        -- Если старой цели нет, выбираем новую ближайшую к центру
+        CurrentTargetPart = nil
         local closestTarget = nil
         local shortestDistance = AimSettings.FOVRadius
-        local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
         
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LocalPlayer then
@@ -1047,30 +1071,32 @@ function LoadMainGUI(guiScaleFactor)
                 end
             end
         end
+        
+        CurrentTargetPart = closestTarget
         return closestTarget
     end
 
-    -- Форсируем перехват управления камерой через правильный приоритет BindToRenderStep
-    RunService:BindToRenderStep("SonyaAimbotLoop", Enum.RenderPriority.Camera.Value + 1, function()
+    -- Перехват рендера камеры с поддержкой dt (DeltaTime)
+    RunService:BindToRenderStep("SonyaAimbotLoop", Enum.RenderPriority.Camera.Value + 1, function(dt)
         FOVCircle.Radius = AimSettings.FOVRadius
         
-        -- Если это ПК — наводимся при зажатом ПКМ. Если это мобилка — наводимся автоматически, когда Aim включен
         local condition = AimSettings.Enabled and (isAiming or UserInputService.TouchEnabled)
         
         if condition then
             local target = getClosestTarget()
             if target then
+                -- Prediction убран: наводка идет строго в исходную позицию кости персонажа
                 local aimPosition = target.Position
-                if AimSettings.Prediction and target.Parent:FindFirstChild("HumanoidRootPart") then
-                    local velocity = target.Parent.HumanoidRootPart.Velocity
-                    if velocity.Magnitude > 0 then
-                        aimPosition = aimPosition + (velocity * AimSettings.PredictionAmount)
-                    end
-                end
+                
                 local currentCFrame = Camera.CFrame
                 local targetCFrame = CFrame.new(currentCFrame.Position, aimPosition)
-                Camera.CFrame = currentCFrame:Lerp(targetCFrame, AimSettings.Smoothness)
+                
+                -- Сглаживание привязано к времени кадра, аим не будет дёргаться на разном FPS
+                local lerpAlpha = math.clamp(dt * (AimSettings.Smoothness * 60), 0, 1)
+                Camera.CFrame = currentCFrame:Lerp(targetCFrame, lerpAlpha)
             end
+        else
+            CurrentTargetPart = nil
         end
     end)
 
