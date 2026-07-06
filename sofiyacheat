@@ -3,13 +3,14 @@ local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-local guiName = "SonyaGUI_V8"
+local guiName = "SonyaGUI_V8_Fixed"
 
--- Определение родителя (чтобы работало и в экзекьюторах, и в Roblox Studio)
+-- Определение родителя
 local parent = nil
 if pcall(function() return CoreGui.Name end) then
     parent = CoreGui
@@ -25,8 +26,8 @@ for _, child in ipairs(parent:GetChildren()) do
 end
 
 -- === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
-local binds = {Fly = nil, Noclip = nil, Speed = nil, Sit = nil, ShiftLock = nil, Spin = nil}
-local isBinding = {Fly = false, Noclip = false, Speed = false, Sit = false, ShiftLock = false, Spin = false}
+local binds = {Fly = nil, Noclip = nil, Speed = nil, Sit = nil, ShiftLock = nil, Spin = nil, LowGraphics = nil}
+local isBinding = {Fly = false, Noclip = false, Speed = false, Sit = false, ShiftLock = false, Spin = false, LowGraphics = false}
 local flySpeed, walkSpeedMod, spinSpeedMod = 50, 50, 20
 local isSpeedhack = false
 
@@ -74,7 +75,7 @@ local function createSizeBtn(text, yPos, scaleFactor)
     
     btn.MouseButton1Click:Connect(function()
         BootGui:Destroy()
-        LoadMainGUI(scaleFactor) -- Загружаем основное меню с выбранным масштабом
+        LoadMainGUI(scaleFactor)
     end)
 end
 
@@ -92,6 +93,16 @@ function LoadMainGUI(guiScaleFactor)
     ScreenGui.Name = guiName .. "_Main"
     ScreenGui.Parent = parent
     ScreenGui.ResetOnSpawn = false
+
+    -- === Прицел для мобильного Shift Lock ===
+    local Crosshair = Instance.new("Frame")
+    Crosshair.Size = UDim2.new(0, 6, 0, 6)
+    Crosshair.Position = UDim2.new(0.5, 0, 0.5, 0)
+    Crosshair.AnchorPoint = Vector2.new(0.5, 0.5)
+    Crosshair.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Crosshair.Visible = false
+    Crosshair.Parent = ScreenGui
+    Instance.new("UICorner", Crosshair).CornerRadius = UDim.new(1, 0)
 
     -- === Кнопка восстановления ===
     local RestoreBtn = Instance.new("TextButton")
@@ -142,6 +153,7 @@ function LoadMainGUI(guiScaleFactor)
     local SitMobileBtn = createMobileBtn("Sit", "Sit", 35)
     local ShiftLockMobileBtn = createMobileBtn("ShiftLock", "S-Lock", 105)
     local SpinMobileBtn = createMobileBtn("Spin", "Spin", 175)
+    local LowGfxMobileBtn = createMobileBtn("LowGfx", "FPS+", 245)
 
     -- === Основное окно ===
     local MainWindow = Instance.new("Frame")
@@ -158,7 +170,6 @@ function LoadMainGUI(guiScaleFactor)
     MainUICorner.CornerRadius = UDim.new(0, 12)
     Instance.new("UIStroke", MainWindow).Color = Color3.fromRGB(40, 40, 40)
     
-    -- Масштабирование главного окна
     local MainScale = Instance.new("UIScale", MainWindow)
     MainScale.Scale = guiScaleFactor
 
@@ -409,6 +420,7 @@ function LoadMainGUI(guiScaleFactor)
     local SitToggle, SitStroke, SitBindBtn, SitBoolBtn = createFeatureModule("Sit (Сесть/Встать)", 7, false)
     local ShiftLockToggle, ShiftLockStroke, ShiftLockBindBtn, ShiftLockBoolBtn = createFeatureModule("Shift Lock (Камера)", 9, false)
     local SpinToggle, SpinStroke, SpinBindBtn, SpinBoolBtn, SpinSlider, SpinFill, SpinLabel = createFeatureModule("Spin (Крутиться)", 11, true, 20, 5, 100, "Скорость вращения")
+    local LowGfxToggle, LowGfxStroke, LowGfxBindBtn, LowGfxBoolBtn = createFeatureModule("Low Graphics (FPS+)", 13, false)
 
     -- Drag окна
     local dragging, dragStart, startPos
@@ -439,8 +451,9 @@ function LoadMainGUI(guiScaleFactor)
     end)
 
     -- ===========================
-    -- === 1. FLY (Исправлено для мобилок) ===
+    -- === ЛОГИКА ФУНКЦИЙ ===
     -- ===========================
+    
     local isFlying, bg, bv = false, nil, nil
     local function toggleFly()
         isFlying = not isFlying
@@ -458,28 +471,21 @@ function LoadMainGUI(guiScaleFactor)
                 
                 RunService:BindToRenderStep("SonyaFly", Enum.RenderPriority.Camera.Value, function()
                     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-                    
                     local md = Vector3.new(0,0,0)
-                    
-                    -- Интеграция с мобильным джойстиком (PlayerModule)
                     pcall(function()
                         local playerModule = require(LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule"))
                         local controls = playerModule:GetControls()
-                        local moveVector = controls:GetMoveVector() -- Получаем вектор движения (включая джойстик)
+                        local moveVector = controls:GetMoveVector()
                         md = (Camera.CFrame.RightVector * moveVector.X) + (Camera.CFrame.LookVector * -moveVector.Z)
                     end)
-                    
-                    -- Резерв для ПК
                     if md.Magnitude == 0 then
                         if UserInputService:IsKeyDown(Enum.KeyCode.W) then md = md + Camera.CFrame.LookVector end
                         if UserInputService:IsKeyDown(Enum.KeyCode.S) then md = md - Camera.CFrame.LookVector end
                         if UserInputService:IsKeyDown(Enum.KeyCode.D) then md = md + Camera.CFrame.RightVector end
                         if UserInputService:IsKeyDown(Enum.KeyCode.A) then md = md - Camera.CFrame.RightVector end
                     end
-                    
                     if UserInputService:IsKeyDown(Enum.KeyCode.Space) then md = md + Vector3.new(0,1,0) end
                     if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then md = md - Vector3.new(0,1,0) end
-                    
                     bg.cframe = Camera.CFrame 
                     bv.velocity = md * flySpeed
                 end)
@@ -495,20 +501,7 @@ function LoadMainGUI(guiScaleFactor)
         end
     end
     FlyToggle.MouseButton1Click:Connect(toggleFly)
-    local isSlidingFly = false
-    FlySlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingFly = true end end)
-    UserInputService.InputChanged:Connect(function(input)
-        if isSlidingFly and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local pos = math.clamp((input.Position.X - FlySlider.Parent.AbsolutePosition.X) / FlySlider.Parent.AbsoluteSize.X, 0, 1)
-            FlyFill.Size = UDim2.new(pos, 0, 1, 0)
-            flySpeed = math.floor(10 + (200 - 10) * pos) FlyLabel.Text = "Скорость: " .. flySpeed
-        end
-    end)
-    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingFly = false end end)
 
-    -- ===========================
-    -- === 2. NOCLIP ===
-    -- ===========================
     local isNoclip, noclipConnection = false, nil
     local function toggleNoclip()
         isNoclip = not isNoclip
@@ -529,11 +522,6 @@ function LoadMainGUI(guiScaleFactor)
     end
     NoclipToggle.MouseButton1Click:Connect(toggleNoclip)
 
-    -- ===========================
-    -- === 3. SPEEDHACK (БЕССМЕРТНЫЙ) ===
-    -- ===========================
-    -- Теперь он проверяет скорость каждый кадр, поэтому не сбросится даже при спавне!
-    local speedConnection = nil
     local function toggleSpeedhack()
         isSpeedhack = not isSpeedhack
         if isSpeedhack then
@@ -544,54 +532,32 @@ function LoadMainGUI(guiScaleFactor)
             SpeedToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
             SpeedStroke.Color = Color3.fromRGB(150, 50, 50)
             SpeedMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-            -- Возвращаем дефолтную скорость при выключении
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("Humanoid") then char.Humanoid.WalkSpeed = 16 end
         end
     end
     SpeedToggle.MouseButton1Click:Connect(toggleSpeedhack)
-    
-    -- Сердце SpeedHack (работает постоянно)
     RunService.Heartbeat:Connect(function()
         if isSpeedhack then
             local char = LocalPlayer.Character
             if char then
                 local hum = char:FindFirstChild("Humanoid")
-                if hum then
-                    hum.WalkSpeed = walkSpeedMod
-                end
+                if hum then hum.WalkSpeed = walkSpeedMod end
             end
         end
     end)
 
-    local isSlidingSpeed = false
-    SpeedSlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingSpeed = true end end)
-    UserInputService.InputChanged:Connect(function(input)
-        if isSlidingSpeed and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local pos = math.clamp((input.Position.X - SpeedSlider.Parent.AbsolutePosition.X) / SpeedSlider.Parent.AbsoluteSize.X, 0, 1)
-            SpeedFill.Size = UDim2.new(pos, 0, 1, 0)
-            walkSpeedMod = math.floor(16 + (250 - 16) * pos) SpeedLabel.Text = "WalkSpeed: " .. walkSpeedMod
-        end
-    end)
-    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingSpeed = false end end)
-
-    -- ===========================
-    -- === 4. SIT ===
-    -- ===========================
     local function toggleSit()
         local char = LocalPlayer.Character
-        if not char then warn("Sit: Персонаж не найден!") return end
+        if not char then return end
         local hum = char:FindFirstChildOfClass("Humanoid")
-        if not hum then warn("Sit: Humanoid не найден!") return end
+        if not hum then return end
         hum.Sit = not hum.Sit
         SitToggle.BackgroundColor3 = hum.Sit and Color3.fromRGB(10, 30, 10) or Color3.fromRGB(30, 10, 10)
         SitStroke.Color = hum.Sit and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
     end
     SitToggle.MouseButton1Click:Connect(toggleSit)
 
-    -- ===========================
-    -- === 5. SHIFT LOCK (Новая система) ===
-    -- ===========================
     local isShiftLock, shiftConn = false, nil
     local function toggleShiftLock()
         isShiftLock = not isShiftLock
@@ -602,14 +568,13 @@ function LoadMainGUI(guiScaleFactor)
             ShiftLockToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
             ShiftLockStroke.Color = Color3.fromRGB(50, 150, 50)
             ShiftLockMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            Crosshair.Visible = true -- Включаем кастомный прицел
             
             shiftConn = RunService.RenderStepped:Connect(function()
-                -- Блокируем мышь в центре экрана
                 UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
                 if char and char:FindFirstChild("HumanoidRootPart") and hum then
-                    hum.AutoRotate = false -- Отключаем стандартный поворот
-                    hum.CameraOffset = Vector3.new(1.75, 0, 0) -- Сдвиг камеры за плечо
-                    -- Синхронизируем поворот персонажа с камерой
+                    hum.AutoRotate = false
+                    hum.CameraOffset = Vector3.new(1.75, 0, 0)
                     local rootPos = char.HumanoidRootPart.Position
                     local lookVec = Camera.CFrame.LookVector
                     char.HumanoidRootPart.CFrame = CFrame.new(rootPos, rootPos + Vector3.new(lookVec.X, 0, lookVec.Z))
@@ -619,6 +584,7 @@ function LoadMainGUI(guiScaleFactor)
             ShiftLockToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
             ShiftLockStroke.Color = Color3.fromRGB(150, 50, 50)
             ShiftLockMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+            Crosshair.Visible = false -- Выключаем прицел
             
             if shiftConn then shiftConn:Disconnect() end
             UserInputService.MouseBehavior = Enum.MouseBehavior.Default
@@ -630,9 +596,6 @@ function LoadMainGUI(guiScaleFactor)
     end
     ShiftLockToggle.MouseButton1Click:Connect(toggleShiftLock)
 
-    -- ===========================
-    -- === 6. SPIN (Крутилка) ===
-    -- ===========================
     local isSpin, spinConn = false, nil
     local function toggleSpin()
         isSpin = not isSpin
@@ -644,7 +607,6 @@ function LoadMainGUI(guiScaleFactor)
             spinConn = RunService.RenderStepped:Connect(function()
                 local char = LocalPlayer.Character
                 if char and char:FindFirstChild("HumanoidRootPart") then
-                    -- Вращение вокруг оси Y на каждом кадре
                     char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(spinSpeedMod), 0)
                 end
             end)
@@ -657,54 +619,158 @@ function LoadMainGUI(guiScaleFactor)
     end
     SpinToggle.MouseButton1Click:Connect(toggleSpin)
 
-    local isSlidingSpin = false
-    SpinSlider.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingSpin = true end end)
-    UserInputService.InputChanged:Connect(function(input)
-        if isSlidingSpin and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local pos = math.clamp((input.Position.X - SpinSlider.Parent.AbsolutePosition.X) / SpinSlider.Parent.AbsoluteSize.X, 0, 1)
-            SpinFill.Size = UDim2.new(pos, 0, 1, 0)
-            spinSpeedMod = math.floor(5 + (100 - 5) * pos) SpinLabel.Text = "Скорость вращения: " .. spinSpeedMod
+    -- === LOW GRAPHICS ЛОГИКА ===
+    local isLowGraphics = false
+    local originalSettings = { Lighting = {}, Terrain = {}, Objects = {} }
+    
+    local function toggleLowGraphics()
+        local Workspace = game:GetService("Workspace")
+        local Terrain = Workspace:FindFirstChildOfClass("Terrain")
+        isLowGraphics = not isLowGraphics
+        
+        if isLowGraphics then
+            LowGfxToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            LowGfxStroke.Color = Color3.fromRGB(50, 150, 50)
+            LowGfxMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            
+            pcall(function()
+                originalSettings.Lighting.GlobalShadows = Lighting.GlobalShadows
+                originalSettings.Lighting.FogEnd = Lighting.FogEnd
+                originalSettings.Lighting.Brightness = Lighting.Brightness
+                originalSettings.Lighting.Ambient = Lighting.Ambient
+                
+                Lighting.GlobalShadows = false
+                Lighting.FogEnd = 0
+                Lighting.Brightness = 0.3
+                Lighting.Ambient = Color3.fromRGB(80, 80, 80)
+            end)
+            
+            for _, v in ipairs(Lighting:GetChildren()) do
+                if v:IsA("PostEffect") or v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("SunRaysEffect") then
+                    pcall(function() originalSettings.Objects[v] = { Enabled = v.Enabled } v.Enabled = false end)
+                end
+            end
+            
+            if Terrain then
+                pcall(function()
+                    originalSettings.Terrain.WaterWaveSize = Terrain.WaterWaveSize
+                    originalSettings.Terrain.WaterWaveSpeed = Terrain.WaterWaveSpeed
+                    originalSettings.Terrain.WaterReflectance = Terrain.WaterReflectance
+                    Terrain.WaterWaveSize = 0 Terrain.WaterWaveSpeed = 0 Terrain.WaterReflectance = 0
+                end)
+            end
+            
+            for _, v in ipairs(Workspace:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    pcall(function()
+                        originalSettings.Objects[v] = { Material = v.Material, Reflectance = v.Reflectance, Transparency = v.Transparency }
+                        v.Material = Enum.Material.SmoothPlastic v.Reflectance = 0
+                        if v.Material ~= Enum.Material.Glass and v.Material ~= Enum.Material.Water then v.Transparency = 0 end
+                    end)
+                end
+                if v:IsA("SpecialMesh") then
+                    pcall(function() originalSettings.Objects[v] = { MeshType = v.MeshType } v.MeshType = Enum.MeshType.Brick end)
+                end
+                if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") then
+                    pcall(function() originalSettings.Objects[v] = { Enabled = v.Enabled } v.Enabled = false end)
+                end
+                if v:IsA("Decal") or v:IsA("Texture") then
+                    pcall(function() originalSettings.Objects[v] = { Transparency = v.Transparency } v.Transparency = 1 end)
+                end
+                if v:IsA("Humanoid") then
+                    pcall(function()
+                        local animator = v:FindFirstChildOfClass("Animator")
+                        if animator then
+                            for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                                originalSettings.Objects[track] = { Speed = track.Speed } track:AdjustSpeed(0)
+                            end
+                        end
+                    end)
+                end
+            end
+        else
+            LowGfxToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+            LowGfxStroke.Color = Color3.fromRGB(150, 50, 50)
+            LowGfxMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+            
+            pcall(function()
+                if originalSettings.Lighting.GlobalShadows ~= nil then Lighting.GlobalShadows = originalSettings.Lighting.GlobalShadows end
+                if originalSettings.Lighting.FogEnd ~= nil then Lighting.FogEnd = originalSettings.Lighting.FogEnd end
+                if originalSettings.Lighting.Brightness ~= nil then Lighting.Brightness = originalSettings.Lighting.Brightness end
+                if originalSettings.Lighting.Ambient ~= nil then Lighting.Ambient = originalSettings.Lighting.Ambient end
+            end)
+            
+            if Terrain then
+                pcall(function()
+                    if originalSettings.Terrain.WaterWaveSize ~= nil then Terrain.WaterWaveSize = originalSettings.Terrain.WaterWaveSize end
+                    if originalSettings.Terrain.WaterWaveSpeed ~= nil then Terrain.WaterWaveSpeed = originalSettings.Terrain.WaterWaveSpeed end
+                    if originalSettings.Terrain.WaterReflectance ~= nil then Terrain.WaterReflectance = originalSettings.Terrain.WaterReflectance end
+                end)
+            end
+            
+            for obj, props in pairs(originalSettings.Objects) do
+                if obj and obj.Parent or obj:IsA("AnimationTrack") then
+                    pcall(function()
+                        for propName, propValue in pairs(props) do
+                            if propName == "Speed" and obj:IsA("AnimationTrack") then obj:AdjustSpeed(propValue) else obj[propName] = propValue end
+                        end
+                    end)
+                end
+            end
+            originalSettings.Objects = {} originalSettings.Lighting = {} originalSettings.Terrain = {}
         end
-    end)
-    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSlidingSpin = false end end)
+    end
+    LowGfxToggle.MouseButton1Click:Connect(toggleLowGraphics)
 
+    -- === ОБРАБОТКА СЛАЙДЕРОВ ===
+    local function setupSlider(sliderBtn, fill, label, minV, maxV, varName, prefix)
+        local isSliding = false
+        sliderBtn.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSliding = true end end)
+        UserInputService.InputChanged:Connect(function(input)
+            if isSliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local pos = math.clamp((input.Position.X - sliderBtn.Parent.AbsolutePosition.X) / sliderBtn.Parent.AbsoluteSize.X, 0, 1)
+                fill.Size = UDim2.new(pos, 0, 1, 0)
+                local val = math.floor(minV + (maxV - minV) * pos)
+                label.Text = prefix .. ": " .. val
+                if varName == "flySpeed" then flySpeed = val
+                elseif varName == "walkSpeedMod" then walkSpeedMod = val
+                elseif varName == "spinSpeedMod" then spinSpeedMod = val end
+            end
+        end)
+        UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSliding = false end end)
+    end
+    setupSlider(FlySlider, FlyFill, FlyLabel, 10, 200, "flySpeed", "Скорость")
+    setupSlider(SpeedSlider, SpeedFill, SpeedLabel, 16, 250, "walkSpeedMod", "WalkSpeed")
+    setupSlider(SpinSlider, SpinFill, SpinLabel, 5, 100, "spinSpeedMod", "Скорость вращения")
 
     -- =============================================
-    -- === УМНЫЕ МОБИЛЬНЫЕ КНОПКИ (БЛОКИРОВКА 5 СЕК) ===
+    -- === ИСПРАВЛЕННЫЕ МОБИЛЬНЫЕ КНОПКИ ===
     -- =============================================
     local function makeMobileBtnDraggable(btn, actionFunc)
-        local dragActive, hasDragged = false, false
-        local dStart, sPos = nil, nil
+        local dragging = false
+        local dragInput = nil
+        local dragStart, startPos = nil, nil
+        local hasMoved = false
         local isLocked = false
         local holdTick = 0
-        local holdRoutine = nil
 
         btn.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragActive = true
-                hasDragged = false
-                dStart = input.Position
-                sPos = btn.Position
-                
+                dragging = true
+                hasMoved = false
+                dragInput = input
+                dragStart = input.Position
+                startPos = btn.Position
                 holdTick = tick()
-                
-                -- Запускаем таймер проверки удержания
-                holdRoutine = task.spawn(function()
-                    while dragActive and not hasDragged do
-                        if tick() - holdTick >= 5 then
+
+                task.spawn(function()
+                    while dragging and not hasMoved do
+                        -- Если удерживаем 1.5 секунды, переключаем блокировку позиции
+                        if tick() - holdTick >= 1.5 then
                             isLocked = not isLocked
-                            if isLocked then
-                                -- Заблокировано (серый/прозрачный)
-                                btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-                                btn.BackgroundTransparency = 0.7
-                                btn.Text = btn.Text .. "\n(LOCKED)"
-                            else
-                                -- Разблокировано
-                                btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-                                btn.BackgroundTransparency = 0.3
-                                btn.Text = string.gsub(btn.Text, "\n%(LOCKED%)", "")
-                            end
-                            dragActive = false -- Прерываем drag, так как сработала блокировка
+                            btn.BackgroundColor3 = isLocked and Color3.fromRGB(50, 50, 50) or Color3.fromRGB(15, 15, 15)
+                            btn.BackgroundTransparency = isLocked and 0.7 or 0.3
+                            dragging = false -- Отменяем перетаскивание после блокировки
                             break
                         end
                         task.wait(0.1)
@@ -714,26 +780,28 @@ function LoadMainGUI(guiScaleFactor)
         end)
 
         UserInputService.InputChanged:Connect(function(input)
-            if dragActive and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                local delta = input.Position - dStart
-                -- Если палец сдвинулся больше чем на 5 пикселей — это не удержание, а перетаскивание
-                if delta.Magnitude > 5 then
-                    hasDragged = true
+            -- Обновляем позицию только если это тот же палец и кнопка не заблокирована
+            if input == dragInput and dragging then
+                local delta = input.Position - dragStart
+                if delta.Magnitude > 10 then
+                    hasMoved = true
                 end
-                
-                -- Перемещаем кнопку, если она НЕ заблокирована
-                if hasDragged and not isLocked then
-                    btn.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + delta.X, sPos.Y.Scale, sPos.Y.Offset + delta.Y)
+                if hasMoved and not isLocked then
+                    btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
                 end
             end
         end)
 
-        UserInputService.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragActive = false
-                -- Если не перетаскивали и удерживали меньше 5 секунд — это обычный клик (запуск функции)
-                if not hasDragged and (tick() - holdTick < 5) then
-                    actionFunc()
+        btn.InputEnded:Connect(function(input)
+            -- Выполняем функцию клика, только если отпустили ИМЕННО ЭТУ кнопку (лечит баг при беге)
+            if input == dragInput then
+                dragging = false
+                if not hasMoved then
+                    local holdTime = tick() - holdTick
+                    -- Если отпустили быстро (< 1.5 сек), засчитываем как клик (даже если кнопка Locked)
+                    if holdTime < 1.5 then
+                        actionFunc()
+                    end
                 end
             end
         end)
@@ -745,6 +813,7 @@ function LoadMainGUI(guiScaleFactor)
     makeMobileBtnDraggable(SitMobileBtn, toggleSit)
     makeMobileBtnDraggable(ShiftLockMobileBtn, toggleShiftLock)
     makeMobileBtnDraggable(SpinMobileBtn, toggleSpin)
+    makeMobileBtnDraggable(LowGfxMobileBtn, toggleLowGraphics)
 
     local function setupMobileShow(boolBtn, mobileBtn)
         local isShown = false
@@ -762,6 +831,7 @@ function LoadMainGUI(guiScaleFactor)
     setupMobileShow(SitBoolBtn, SitMobileBtn)
     setupMobileShow(ShiftLockBoolBtn, ShiftLockMobileBtn)
     setupMobileShow(SpinBoolBtn, SpinMobileBtn)
+    setupMobileShow(LowGfxBoolBtn, LowGfxMobileBtn)
 
     -- ===========================
     -- === БИНДЫ С КЛАВИАТУРЫ ===
@@ -770,13 +840,13 @@ function LoadMainGUI(guiScaleFactor)
         btn.MouseButton1Click:Connect(function() btn.Text = "..." isBinding[keyName] = true end)
     end
     setupBind(FlyBindBtn, "Fly") setupBind(NoclipBindBtn, "Noclip") setupBind(SpeedBindBtn, "Speed") 
-    setupBind(SitBindBtn, "Sit") setupBind(ShiftLockBindBtn, "ShiftLock") setupBind(SpinBindBtn, "Spin")
+    setupBind(SitBindBtn, "Sit") setupBind(ShiftLockBindBtn, "ShiftLock") setupBind(SpinBindBtn, "Spin") setupBind(LowGfxBindBtn, "LowGraphics")
 
     UserInputService.InputBegan:Connect(function(input, gp)
         if input.UserInputType == Enum.UserInputType.Keyboard then
             for keyName, binding in pairs(isBinding) do
                 if binding then
-                    local btnUI = keyName == "Fly" and FlyBindBtn or keyName == "Noclip" and NoclipBindBtn or keyName == "Speed" and SpeedBindBtn or keyName == "Sit" and SitBindBtn or keyName == "ShiftLock" and ShiftLockBindBtn or SpinBindBtn
+                    local btnUI = keyName == "Fly" and FlyBindBtn or keyName == "Noclip" and NoclipBindBtn or keyName == "Speed" and SpeedBindBtn or keyName == "Sit" and SitBindBtn or keyName == "ShiftLock" and ShiftLockBindBtn or keyName == "Spin" and SpinBindBtn or LowGfxBindBtn
                     if input.KeyCode == Enum.KeyCode.Escape then
                         binds[keyName] = nil btnUI.Text = "[NONE]"
                     else
@@ -794,6 +864,7 @@ function LoadMainGUI(guiScaleFactor)
             if binds.Sit and input.KeyCode == binds.Sit then toggleSit() end
             if binds.ShiftLock and input.KeyCode == binds.ShiftLock then toggleShiftLock() end
             if binds.Spin and input.KeyCode == binds.Spin then toggleSpin() end
+            if binds.LowGraphics and input.KeyCode == binds.LowGraphics then toggleLowGraphics() end
         end
     end)
 end
