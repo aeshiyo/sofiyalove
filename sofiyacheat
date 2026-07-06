@@ -8,7 +8,7 @@ local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-local guiName = "SonyaGUI_V9_ESP"
+local guiName = "SonyaGUI_V10_Final_Aim"
 
 -- Определение родителя
 local parent = nil
@@ -18,27 +18,52 @@ else
     parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- Удаление старой версии и очистка старого ESP
+-- Удаление старой версии и очистка старого ESP / FOV
 for _, child in ipairs(parent:GetChildren()) do
     if child.Name:match("SonyaGUI") then
         child:Destroy()
     end
 end
 if _G.SonyaESP_Connection then _G.SonyaESP_Connection:Disconnect() end
+pcall(function() RunService:UnbindFromRenderStep("SonyaAimbotLoop") end)
 if _G.SonyaESP_Clear then _G.SonyaESP_Clear() end
 
--- === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
-local binds = {Fly = nil, Noclip = nil, Speed = nil, Sit = nil, ShiftLock = nil, Spin = nil, LowGraphics = nil, ESP = nil}
-local isBinding = {Fly = false, Noclip = false, Speed = false, Sit = false, ShiftLock = false, Spin = false, LowGraphics = false, ESP = false}
+-- === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И НАСТРОЙКИ ===
+local binds = {Fly = nil, Noclip = nil, Speed = nil, Sit = nil, ShiftLock = nil, Spin = nil, LowGraphics = nil, ESP = nil, Aimbot = nil, FOV = nil}
+local isBinding = {Fly = false, Noclip = false, Speed = false, Sit = false, ShiftLock = false, Spin = false, LowGraphics = false, ESP = false, Aimbot = false, FOV = false}
 local flySpeed, walkSpeedMod, spinSpeedMod = 50, 50, 20
 local isSpeedhack = false
+
+-- Настройки Аимбота (Prediction полностью удален)
+local AimSettings = {
+    Enabled = false,
+    FOVVisible = false,
+    FOVRadius = 150,
+    Smoothness = 0.2, 
+    TargetParts = {"Head", "HumanoidRootPart", "UpperTorso", "LowerTorso"},
+    TeamCheck = false, 
+    WallCheck = false  
+}
+
+-- Создание FOV круга через Drawing API
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = false
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+FOVCircle.Thickness = 1.5
+FOVCircle.Transparency = 0.8
+FOVCircle.Filled = false
+FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+Camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+end)
 
 -- ==========================================
 -- === ЭТАП 1: МЕНЮ ВЫБОРА РАЗМЕРА (BOOT) ===
 -- ==========================================
 
 local BootGui = Instance.new("ScreenGui")
-BootGui.Name = guiName .. "_Boot"
+BootGui.Name = BootGui.Name or (guiName .. "_Boot")
 BootGui.Parent = parent
 BootGui.ResetOnSpawn = false
 
@@ -48,7 +73,7 @@ BootFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 BootFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 BootFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 BootFrame.BackgroundTransparency = 0.1
-BootFrame.Parent = BootGui
+BootFrame.Parent = BootFrame.Parent and BootGui
 Instance.new("UICorner", BootFrame).CornerRadius = UDim.new(0, 12)
 Instance.new("UIStroke", BootFrame).Color = Color3.fromRGB(80, 80, 80)
 
@@ -145,14 +170,15 @@ function LoadMainGUI(guiScaleFactor)
         return btn
     end
 
-    local FlyMobileBtn = createMobileBtn("Fly", "+ Fly", -210)
-    local NoclipMobileBtn = createMobileBtn("Noclip", "Noclip", -140)
-    local SpeedMobileBtn = createMobileBtn("Speed", "Speed", -70)
-    local SitMobileBtn = createMobileBtn("Sit", "Sit", 0)
-    local ShiftLockMobileBtn = createMobileBtn("ShiftLock", "S-Lock", 70)
-    local SpinMobileBtn = createMobileBtn("Spin", "Spin", 140)
-    local LowGfxMobileBtn = createMobileBtn("LowGfx", "FPS+", 210)
-    local ESPMobileBtn = createMobileBtn("ESP", "ESP", 280)
+    local FlyMobileBtn = createMobileBtn("Fly", "+ Fly", -240)
+    local NoclipMobileBtn = createMobileBtn("Noclip", "Noclip", -180)
+    local SpeedMobileBtn = createMobileBtn("Speed", "Speed", -120)
+    local SitMobileBtn = createMobileBtn("Sit", "Sit", -60)
+    local ShiftLockMobileBtn = createMobileBtn("ShiftLock", "S-Lock", 0)
+    local SpinMobileBtn = createMobileBtn("Spin", "Spin", 60)
+    local LowGfxMobileBtn = createMobileBtn("LowGfx", "FPS+", 120)
+    local ESPMobileBtn = createMobileBtn("ESP", "ESP", 180)
+    local AimbotMobileBtn = createMobileBtn("Aimbot", "Aim", 240)
 
     local MainWindow = Instance.new("Frame")
     MainWindow.Size = UDim2.new(0, 850, 0, 550)
@@ -317,6 +343,7 @@ function LoadMainGUI(guiScaleFactor)
         Settings.LayoutOrder = layoutOrder + 1
         Settings.Parent = ContentScroll
         Instance.new("UICorner", Settings).CornerRadius = UDim.new(0, 8)
+        Settings.Parent = Settings.Parent and ContentScroll
         Instance.new("UIStroke", Settings).Color = Color3.fromRGB(40, 40, 40)
 
         Gear.MouseButton1Click:Connect(function() Settings.Visible = not Settings.Visible end)
@@ -415,6 +442,8 @@ function LoadMainGUI(guiScaleFactor)
     local SpinToggle, SpinStroke, SpinBindBtn, SpinBoolBtn, SpinSlider, SpinFill, SpinLabel = createFeatureModule("Spin (Крутиться)", 11, true, 20, 5, 100, "Скорость вращения")
     local LowGfxToggle, LowGfxStroke, LowGfxBindBtn, LowGfxBoolBtn = createFeatureModule("Low Graphics (FPS+)", 13, false)
     local ESPToggle, ESPStroke, ESPBindBtn, ESPBoolBtn = createFeatureModule("ESP (ВХ + Инфо + Скелет)", 15, false)
+    local AimbotToggle, AimbotStroke, AimbotBindBtn, AimbotBoolBtn, AimbotSlider, AimbotFill, AimbotLabel = createFeatureModule("Aimbot (Наводка ПКМ)", 17, true, 20, 1, 100, "Плавность")
+    local FOVToggle, FOVStroke, FOVBindBtn, FOVBoolBtn, FOVSlider, FOVFill, FOVLabel = createFeatureModule("Aimbot FOV (Круг)", 19, true, 150, 50, 500, "Радиус")
 
     -- Drag окна
     local dragging, dragStart, startPos
@@ -433,7 +462,12 @@ function LoadMainGUI(guiScaleFactor)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
     end)
 
-    CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() if _G.SonyaESP_Clear then _G.SonyaESP_Clear() end end)
+    CloseBtn.MouseButton1Click:Connect(function() 
+        ScreenGui:Destroy() 
+        FOVCircle:Remove() 
+        pcall(function() RunService:UnbindFromRenderStep("SonyaAimbotLoop") end)
+        if _G.SonyaESP_Clear then _G.SonyaESP_Clear() end 
+    end)
     MinBtn.MouseButton1Click:Connect(function() MainWindow.Visible = false RestoreBtn.Visible = true end)
     RestoreBtn.MouseButton1Click:Connect(function() MainWindow.Visible = true RestoreBtn.Visible = false end)
     local isFullscreen = false
@@ -704,7 +738,6 @@ function LoadMainGUI(guiScaleFactor)
     local isESP = false
     local espCache = {}
     
-    -- Соединения костей для R15
     local R15_Bones = {
         {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"},
         {"UpperTorso", "RightUpperArm"}, {"RightUpperArm", "RightLowerArm"}, {"RightLowerArm", "RightHand"},
@@ -713,7 +746,6 @@ function LoadMainGUI(guiScaleFactor)
         {"LowerTorso", "LeftUpperLeg"}, {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"}
     }
     
-    -- Соединения костей для R6 (если игра старая)
     local R6_Bones = {
         {"Head", "Torso"},
         {"Torso", "Right Arm"}, {"Torso", "Left Arm"},
@@ -722,7 +754,7 @@ function LoadMainGUI(guiScaleFactor)
 
     local function getESPColor(health, maxHealth)
         local hpFactor = math.clamp(health / maxHealth, 0, 1)
-        return Color3.new(1 - hpFactor, hpFactor, 0) -- От красного (0) к зеленому (1)
+        return Color3.new(1 - hpFactor, hpFactor, 0)
     end
 
     local function checkVisibility(targetPart)
@@ -734,9 +766,9 @@ function LoadMainGUI(guiScaleFactor)
         raycastParams.IgnoreWater = true
         local result = workspace:Raycast(origin, direction, raycastParams)
         if result and result.Instance and not result.Instance:IsDescendantOf(targetPart.Parent) then
-            return false -- За стеной
+            return false
         end
-        return true -- Видим
+        return true
     end
 
     local function createESPObj(player)
@@ -777,7 +809,7 @@ function LoadMainGUI(guiScaleFactor)
         for i = 1, 15 do
             local line = Drawing.new("Line")
             line.Thickness = 1.5
-            line.Color = Color3.new(0.5, 0.8, 1) -- Ярко-голубой
+            line.Color = Color3.new(0.5, 0.8, 1)
             table.insert(obj.SkeletonLines, line)
         end
         
@@ -821,7 +853,7 @@ function LoadMainGUI(guiScaleFactor)
                         obj.Box.Transparency = trans
                         obj.Box.Visible = true
                         
-                        -- Имя и Vehicle
+                        -- Имя
                         local nameTxt = player.Name
                         if hum.SeatPart then nameTxt = nameTxt .. " [VEHICLE]" end
                         obj.Name.Text = nameTxt
@@ -857,7 +889,7 @@ function LoadMainGUI(guiScaleFactor)
                         obj.HeadDot.Transparency = trans
                         obj.HeadDot.Visible = true
                         
-                        -- Chams (Материал Neon + Highlight)
+                        -- Chams
                         if obj.ChamsHighlight.Parent ~= char then
                             obj.ChamsHighlight.Parent = char
                         end
@@ -901,16 +933,13 @@ function LoadMainGUI(guiScaleFactor)
                                 line.Visible = false
                             end
                         end
-                        
                     else
-                        -- Игрок за экраном
                         obj.Box.Visible = false obj.Name.Visible = false obj.Dist.Visible = false
                         obj.HP.Visible = false obj.Tracer.Visible = false obj.HeadDot.Visible = false
                         for _, line in ipairs(obj.SkeletonLines) do line.Visible = false end
                         if obj.ChamsHighlight.Parent then obj.ChamsHighlight.Parent = nil end
                     end
                 else
-                    -- Игрок мертв или нет персонажа
                     if obj then
                         obj.Box.Visible = false obj.Name.Visible = false obj.Dist.Visible = false
                         obj.HP.Visible = false obj.Tracer.Visible = false obj.HeadDot.Visible = false
@@ -949,6 +978,127 @@ function LoadMainGUI(guiScaleFactor)
     end
     ESPToggle.MouseButton1Click:Connect(toggleESP)
 
+    -- ====================================================
+    -- === СТАБИЛИЗИРОВАННЫЙ АИМБОТ БЕЗ PREDICTION (МЕРДЖ) ===
+    -- ====================================================
+    local isAiming = false
+    local CurrentTargetPart = nil 
+    
+    local function toggleAimbot()
+        AimSettings.Enabled = not AimSettings.Enabled
+        AimbotToggle.BackgroundColor3 = AimSettings.Enabled and Color3.fromRGB(10, 30, 10) or Color3.fromRGB(30, 10, 10)
+        AimbotStroke.Color = AimSettings.Enabled and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+        AimbotMobileBtn.BackgroundColor3 = AimSettings.Enabled and Color3.fromRGB(10, 30, 10) or Color3.fromRGB(15, 15, 15)
+        if not AimSettings.Enabled then CurrentTargetPart = nil end
+    end
+    AimbotToggle.MouseButton1Click:Connect(toggleAimbot)
+
+    local function toggleFOV()
+        AimSettings.FOVVisible = not AimSettings.FOVVisible
+        FOVCircle.Visible = AimSettings.FOVVisible
+        FOVToggle.BackgroundColor3 = AimSettings.FOVVisible and Color3.fromRGB(10, 30, 10) or Color3.fromRGB(30, 10, 10)
+        FOVStroke.Color = AimSettings.FOVVisible and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(150, 50, 50)
+    end
+    FOVToggle.MouseButton1Click:Connect(toggleFOV)
+
+    UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then isAiming = true end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton2 then 
+            isAiming = false 
+            CurrentTargetPart = nil 
+        end
+    end)
+
+    local function getBestPart(char)
+        for _, partName in ipairs(AimSettings.TargetParts) do
+            local part = char:FindFirstChild(partName)
+            if part then
+                if AimSettings.WallCheck then
+                    if checkVisibility(part) then return part end
+                else
+                    return part
+                end
+            end
+        end
+        return nil
+    end
+
+    local function getClosestTarget()
+        local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+        -- Target Lock: держим текущую цель, если она в FOV и жива
+        if CurrentTargetPart and CurrentTargetPart.Parent and CurrentTargetPart.Parent:FindFirstChild("Humanoid") then
+            local hum = CurrentTargetPart.Parent.Humanoid
+            if hum.Health > 0 then
+                local partPos, onScreen = Camera:WorldToViewportPoint(CurrentTargetPart.Position)
+                local distance = (Vector2.new(partPos.X, partPos.Y) - screenCenter).Magnitude
+                
+                if onScreen and distance <= AimSettings.FOVRadius then
+                    if AimSettings.WallCheck then
+                        if checkVisibility(CurrentTargetPart) then return CurrentTargetPart end
+                    else
+                        return CurrentTargetPart
+                    end
+                end
+            end
+        end
+
+        -- Если старой цели нет, выбираем новую ближайшую к центру
+        CurrentTargetPart = nil
+        local closestTarget = nil
+        local shortestDistance = AimSettings.FOVRadius
+        
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                if AimSettings.TeamCheck and player.Team == LocalPlayer.Team then continue end
+                local char = player.Character
+                local hum = char and char:FindFirstChild("Humanoid")
+                if char and hum and hum.Health > 0 then
+                    local targetPart = getBestPart(char)
+                    if targetPart then
+                        local partPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                        if onScreen then
+                            local distance = (Vector2.new(partPos.X, partPos.Y) - screenCenter).Magnitude
+                            if distance < shortestDistance then
+                                shortestDistance = distance
+                                closestTarget = targetPart
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        CurrentTargetPart = closestTarget
+        return closestTarget
+    end
+
+    -- Перехват рендера камеры с поддержкой dt (DeltaTime)
+    RunService:BindToRenderStep("SonyaAimbotLoop", Enum.RenderPriority.Camera.Value + 1, function(dt)
+        FOVCircle.Radius = AimSettings.FOVRadius
+        
+        local condition = AimSettings.Enabled and (isAiming or UserInputService.TouchEnabled)
+        
+        if condition then
+            local target = getClosestTarget()
+            if target then
+                -- Prediction убран: наводка идет строго в исходную позицию кости персонажа
+                local aimPosition = target.Position
+                
+                local currentCFrame = Camera.CFrame
+                local targetCFrame = CFrame.new(currentCFrame.Position, aimPosition)
+                
+                -- Сглаживание привязано к времени кадра, аим не будет дёргаться на разном FPS
+                local lerpAlpha = math.clamp(dt * (AimSettings.Smoothness * 60), 0, 1)
+                Camera.CFrame = currentCFrame:Lerp(targetCFrame, lerpAlpha)
+            end
+        else
+            CurrentTargetPart = nil
+        end
+    end)
 
     -- === ОБРАБОТКА СЛАЙДЕРОВ ===
     local function setupSlider(sliderBtn, fill, label, minV, maxV, varName, prefix)
@@ -962,7 +1112,9 @@ function LoadMainGUI(guiScaleFactor)
                 label.Text = prefix .. ": " .. val
                 if varName == "flySpeed" then flySpeed = val
                 elseif varName == "walkSpeedMod" then walkSpeedMod = val
-                elseif varName == "spinSpeedMod" then spinSpeedMod = val end
+                elseif varName == "spinSpeedMod" then spinSpeedMod = val 
+                elseif varName == "aimSmoothness" then AimSettings.Smoothness = val / 100
+                elseif varName == "aimRadius" then AimSettings.FOVRadius = val end
             end
         end)
         UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isSliding = false end end)
@@ -970,6 +1122,8 @@ function LoadMainGUI(guiScaleFactor)
     setupSlider(FlySlider, FlyFill, FlyLabel, 10, 200, "flySpeed", "Скорость")
     setupSlider(SpeedSlider, SpeedFill, SpeedLabel, 16, 250, "walkSpeedMod", "WalkSpeed")
     setupSlider(SpinSlider, SpinFill, SpinLabel, 5, 100, "spinSpeedMod", "Скорость вращения")
+    setupSlider(AimbotSlider, AimbotFill, AimbotLabel, 1, 100, "aimSmoothness", "Плавность")
+    setupSlider(FOVSlider, FOVFill, FOVLabel, 50, 500, "aimRadius", "Радиус")
 
     -- === ОБРАБОТКА МОБИЛЬНЫХ КНОПОК ===
     local function makeMobileBtnDraggable(btn, actionFunc)
@@ -1028,6 +1182,7 @@ function LoadMainGUI(guiScaleFactor)
     makeMobileBtnDraggable(SpinMobileBtn, toggleSpin)
     makeMobileBtnDraggable(LowGfxMobileBtn, toggleLowGraphics)
     makeMobileBtnDraggable(ESPMobileBtn, toggleESP)
+    makeMobileBtnDraggable(AimbotMobileBtn, toggleAimbot)
 
     local function setupMobileShow(boolBtn, mobileBtn)
         local isShown = false
@@ -1047,6 +1202,8 @@ function LoadMainGUI(guiScaleFactor)
     setupMobileShow(SpinBoolBtn, SpinMobileBtn)
     setupMobileShow(LowGfxBoolBtn, LowGfxMobileBtn)
     setupMobileShow(ESPBoolBtn, ESPMobileBtn)
+    setupMobileShow(AimbotBoolBtn, AimbotMobileBtn)
+    setupMobileShow(FOVBoolBtn, Instance.new("Frame"))
 
     -- === БИНДЫ С КЛАВИАТУРЫ ===
     local function setupBind(btn, keyName)
@@ -1054,13 +1211,14 @@ function LoadMainGUI(guiScaleFactor)
     end
     setupBind(FlyBindBtn, "Fly") setupBind(NoclipBindBtn, "Noclip") setupBind(SpeedBindBtn, "Speed") 
     setupBind(SitBindBtn, "Sit") setupBind(ShiftLockBindBtn, "ShiftLock") setupBind(SpinBindBtn, "Spin") 
-    setupBind(LowGfxBindBtn, "LowGraphics") setupBind(ESPBindBtn, "ESP")
+    setupBind(LowGfxBindBtn, "LowGraphics") setupBind(ESPBindBtn, "ESP") setupBind(AimbotBindBtn, "Aimbot")
+    setupBind(FOVBindBtn, "FOV")
 
     UserInputService.InputBegan:Connect(function(input, gp)
         if input.UserInputType == Enum.UserInputType.Keyboard then
             for keyName, binding in pairs(isBinding) do
                 if binding then
-                    local btnUI = keyName == "Fly" and FlyBindBtn or keyName == "Noclip" and NoclipBindBtn or keyName == "Speed" and SpeedBindBtn or keyName == "Sit" and SitBindBtn or keyName == "ShiftLock" and ShiftLockBindBtn or keyName == "Spin" and SpinBindBtn or keyName == "LowGraphics" and LowGfxBindBtn or ESPBindBtn
+                    local btnUI = keyName == "Fly" and FlyBindBtn or keyName == "Noclip" and NoclipBindBtn or keyName == "Speed" and SpeedBindBtn or keyName == "Sit" and SitBindBtn or keyName == "ShiftLock" and ShiftLockBindBtn or keyName == "Spin" and SpinBindBtn or keyName == "LowGraphics" and LowGfxBindBtn or keyName == "ESP" and ESPBindBtn or keyName == "Aimbot" and AimbotBindBtn or FOVBindBtn
                     if input.KeyCode == Enum.KeyCode.Escape then
                         binds[keyName] = nil btnUI.Text = "[NONE]"
                     else
@@ -1080,6 +1238,8 @@ function LoadMainGUI(guiScaleFactor)
             if binds.Spin and input.KeyCode == binds.Spin then toggleSpin() end
             if binds.LowGraphics and input.KeyCode == binds.LowGraphics then toggleLowGraphics() end
             if binds.ESP and input.KeyCode == binds.ESP then toggleESP() end
+            if binds.Aimbot and input.KeyCode == binds.Aimbot then toggleAimbot() end
+            if binds.FOV and input.KeyCode == binds.FOV then toggleFOV() end
         end
     end)
 end
