@@ -8,7 +8,7 @@ local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-local guiName = "SonyaGUI_V8_Fixed"
+local guiName = "SonyaGUI_V9_ESP"
 
 -- Определение родителя
 local parent = nil
@@ -18,16 +18,18 @@ else
     parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- Удаление старой версии
+-- Удаление старой версии и очистка старого ESP
 for _, child in ipairs(parent:GetChildren()) do
     if child.Name:match("SonyaGUI") then
         child:Destroy()
     end
 end
+if _G.SonyaESP_Connection then _G.SonyaESP_Connection:Disconnect() end
+if _G.SonyaESP_Clear then _G.SonyaESP_Clear() end
 
 -- === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
-local binds = {Fly = nil, Noclip = nil, Speed = nil, Sit = nil, ShiftLock = nil, Spin = nil, LowGraphics = nil}
-local isBinding = {Fly = false, Noclip = false, Speed = false, Sit = false, ShiftLock = false, Spin = false, LowGraphics = false}
+local binds = {Fly = nil, Noclip = nil, Speed = nil, Sit = nil, ShiftLock = nil, Spin = nil, LowGraphics = nil, ESP = nil}
+local isBinding = {Fly = false, Noclip = false, Speed = false, Sit = false, ShiftLock = false, Spin = false, LowGraphics = false, ESP = false}
 local flySpeed, walkSpeedMod, spinSpeedMod = 50, 50, 20
 local isSpeedhack = false
 
@@ -83,7 +85,6 @@ createSizeBtn("Маленькое", 50, 0.8)
 createSizeBtn("Среднее", 100, 1.0)
 createSizeBtn("Большое", 150, 1.25)
 
-
 -- ==========================================
 -- === ЭТАП 2: ОСНОВНОЙ ИНТЕРФЕЙС И ЛОГИКА ===
 -- ==========================================
@@ -94,7 +95,6 @@ function LoadMainGUI(guiScaleFactor)
     ScreenGui.Parent = parent
     ScreenGui.ResetOnSpawn = false
 
-    -- === Прицел для мобильного Shift Lock ===
     local Crosshair = Instance.new("Frame")
     Crosshair.Size = UDim2.new(0, 6, 0, 6)
     Crosshair.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -104,7 +104,6 @@ function LoadMainGUI(guiScaleFactor)
     Crosshair.Parent = ScreenGui
     Instance.new("UICorner", Crosshair).CornerRadius = UDim.new(1, 0)
 
-    -- === Кнопка восстановления ===
     local RestoreBtn = Instance.new("TextButton")
     RestoreBtn.Size = UDim2.new(0, 100, 0, 40)
     RestoreBtn.Position = UDim2.new(0, 20, 0, 20)
@@ -121,7 +120,6 @@ function LoadMainGUI(guiScaleFactor)
     local RestoreScale = Instance.new("UIScale", RestoreBtn)
     RestoreScale.Scale = guiScaleFactor
 
-    -- === Мобильные кнопки (Бинды на экране) ===
     local mobileButtonsList = {}
     local function createMobileBtn(name, text, yOffset)
         local btn = Instance.new("TextButton")
@@ -147,15 +145,15 @@ function LoadMainGUI(guiScaleFactor)
         return btn
     end
 
-    local FlyMobileBtn = createMobileBtn("Fly", "+ Fly", -175)
-    local NoclipMobileBtn = createMobileBtn("Noclip", "Noclip", -105)
-    local SpeedMobileBtn = createMobileBtn("Speed", "Speed", -35)
-    local SitMobileBtn = createMobileBtn("Sit", "Sit", 35)
-    local ShiftLockMobileBtn = createMobileBtn("ShiftLock", "S-Lock", 105)
-    local SpinMobileBtn = createMobileBtn("Spin", "Spin", 175)
-    local LowGfxMobileBtn = createMobileBtn("LowGfx", "FPS+", 245)
+    local FlyMobileBtn = createMobileBtn("Fly", "+ Fly", -210)
+    local NoclipMobileBtn = createMobileBtn("Noclip", "Noclip", -140)
+    local SpeedMobileBtn = createMobileBtn("Speed", "Speed", -70)
+    local SitMobileBtn = createMobileBtn("Sit", "Sit", 0)
+    local ShiftLockMobileBtn = createMobileBtn("ShiftLock", "S-Lock", 70)
+    local SpinMobileBtn = createMobileBtn("Spin", "Spin", 140)
+    local LowGfxMobileBtn = createMobileBtn("LowGfx", "FPS+", 210)
+    local ESPMobileBtn = createMobileBtn("ESP", "ESP", 280)
 
-    -- === Основное окно ===
     local MainWindow = Instance.new("Frame")
     MainWindow.Size = UDim2.new(0, 850, 0, 550)
     MainWindow.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -173,7 +171,6 @@ function LoadMainGUI(guiScaleFactor)
     local MainScale = Instance.new("UIScale", MainWindow)
     MainScale.Scale = guiScaleFactor
 
-    -- Левая панель
     local LeftPanel = Instance.new("Frame")
     LeftPanel.Size = UDim2.new(0, 220, 1, 0)
     LeftPanel.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
@@ -189,7 +186,6 @@ function LoadMainGUI(guiScaleFactor)
     LeftLayout.SortOrder = Enum.SortOrder.LayoutOrder
     LeftLayout.Padding = UDim.new(0, 15)
 
-    -- Кнопки управления (Закрыть, Свернуть)
     local ControlsFrame = Instance.new("Frame")
     ControlsFrame.Size = UDim2.new(1, 0, 0, 25)
     ControlsFrame.BackgroundTransparency = 1
@@ -240,7 +236,6 @@ function LoadMainGUI(guiScaleFactor)
     Separator.BorderSizePixel = 0
     Separator.Parent = MainWindow
 
-    -- Правая панель (Скролл)
     local RightPanel = Instance.new("Frame")
     RightPanel.Size = UDim2.new(1, -222, 1, 0)
     RightPanel.Position = UDim2.new(0, 222, 0, 0)
@@ -259,7 +254,6 @@ function LoadMainGUI(guiScaleFactor)
     ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
     ContentLayout.Padding = UDim.new(0, 10)
 
-    -- Функция создания модулей
     local function createFeatureModule(title, layoutOrder, hasSlider, defaultVal, minVal, maxVal, sliderLabelPrefix)
         local Frame = Instance.new("Frame")
         Frame.Size = UDim2.new(1, -10, 0, 50)
@@ -413,7 +407,6 @@ function LoadMainGUI(guiScaleFactor)
         return Toggle, TStroke, Bind, BoolBtn, SliderBtn, SliderFill, SLabel
     end
 
-    -- Создаем модули
     local FlyToggle, FlyStroke, FlyBindBtn, FlyBoolBtn, FlySlider, FlyFill, FlyLabel = createFeatureModule("Fly (Полет)", 1, true, 50, 10, 200, "Скорость")
     local NoclipToggle, NoclipStroke, NoclipBindBtn, NoclipBoolBtn = createFeatureModule("Noclip (Сквозь стены)", 3, false)
     local SpeedToggle, SpeedStroke, SpeedBindBtn, SpeedBoolBtn, SpeedSlider, SpeedFill, SpeedLabel = createFeatureModule("Speedhack (Скорость)", 5, true, 50, 16, 250, "WalkSpeed")
@@ -421,6 +414,7 @@ function LoadMainGUI(guiScaleFactor)
     local ShiftLockToggle, ShiftLockStroke, ShiftLockBindBtn, ShiftLockBoolBtn = createFeatureModule("Shift Lock (Камера)", 9, false)
     local SpinToggle, SpinStroke, SpinBindBtn, SpinBoolBtn, SpinSlider, SpinFill, SpinLabel = createFeatureModule("Spin (Крутиться)", 11, true, 20, 5, 100, "Скорость вращения")
     local LowGfxToggle, LowGfxStroke, LowGfxBindBtn, LowGfxBoolBtn = createFeatureModule("Low Graphics (FPS+)", 13, false)
+    local ESPToggle, ESPStroke, ESPBindBtn, ESPBoolBtn = createFeatureModule("ESP (ВХ + Инфо + Скелет)", 15, false)
 
     -- Drag окна
     local dragging, dragStart, startPos
@@ -439,7 +433,7 @@ function LoadMainGUI(guiScaleFactor)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
     end)
 
-    CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+    CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() if _G.SonyaESP_Clear then _G.SonyaESP_Clear() end end)
     MinBtn.MouseButton1Click:Connect(function() MainWindow.Visible = false RestoreBtn.Visible = true end)
     RestoreBtn.MouseButton1Click:Connect(function() MainWindow.Visible = true RestoreBtn.Visible = false end)
     local isFullscreen = false
@@ -568,7 +562,7 @@ function LoadMainGUI(guiScaleFactor)
             ShiftLockToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
             ShiftLockStroke.Color = Color3.fromRGB(50, 150, 50)
             ShiftLockMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
-            Crosshair.Visible = true -- Включаем кастомный прицел
+            Crosshair.Visible = true
             
             shiftConn = RunService.RenderStepped:Connect(function()
                 UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
@@ -584,7 +578,7 @@ function LoadMainGUI(guiScaleFactor)
             ShiftLockToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
             ShiftLockStroke.Color = Color3.fromRGB(150, 50, 50)
             ShiftLockMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-            Crosshair.Visible = false -- Выключаем прицел
+            Crosshair.Visible = false
             
             if shiftConn then shiftConn:Disconnect() end
             UserInputService.MouseBehavior = Enum.MouseBehavior.Default
@@ -619,10 +613,8 @@ function LoadMainGUI(guiScaleFactor)
     end
     SpinToggle.MouseButton1Click:Connect(toggleSpin)
 
-    -- === LOW GRAPHICS ЛОГИКА ===
     local isLowGraphics = false
     local originalSettings = { Lighting = {}, Terrain = {}, Objects = {} }
-    
     local function toggleLowGraphics()
         local Workspace = game:GetService("Workspace")
         local Terrain = Workspace:FindFirstChildOfClass("Terrain")
@@ -633,29 +625,22 @@ function LoadMainGUI(guiScaleFactor)
             LowGfxStroke.Color = Color3.fromRGB(50, 150, 50)
             LowGfxMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
             
-            -- Оптимизация освещения (яркое, без тяжелых теней, но различимое)
             pcall(function()
                 originalSettings.Lighting.GlobalShadows = Lighting.GlobalShadows
                 originalSettings.Lighting.FogEnd = Lighting.FogEnd
                 originalSettings.Lighting.Brightness = Lighting.Brightness
                 originalSettings.Lighting.Ambient = Lighting.Ambient
                 originalSettings.Lighting.OutdoorAmbient = Lighting.OutdoorAmbient
-                
-                Lighting.GlobalShadows = false
-                Lighting.FogEnd = 9e9 -- Убираем туман
-                Lighting.Brightness = 2
-                Lighting.Ambient = Color3.fromRGB(120, 120, 120) -- Чтобы грани не сливались
-                Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 120)
+                Lighting.GlobalShadows = false Lighting.FogEnd = 9e9 Lighting.Brightness = 2
+                Lighting.Ambient = Color3.fromRGB(120, 120, 120) Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 120)
             end)
             
-            -- Выключаем тяжелые эффекты постобработки
             for _, v in ipairs(Lighting:GetChildren()) do
                 if v:IsA("PostEffect") or v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("DepthOfFieldEffect") then
                     pcall(function() originalSettings.Objects[v] = { Enabled = v.Enabled } v.Enabled = false end)
                 end
             end
             
-            -- Убираем качество воды
             if Terrain then
                 pcall(function()
                     originalSettings.Terrain.WaterWaveSize = Terrain.WaterWaveSize
@@ -665,21 +650,15 @@ function LoadMainGUI(guiScaleFactor)
                 end)
             end
             
-            -- Оптимизация каждого объекта (Эффект "Краски")
             for _, v in ipairs(Workspace:GetDescendants()) do
                 if v:IsA("BasePart") then
                     pcall(function()
                         originalSettings.Objects[v] = { Material = v.Material, Reflectance = v.Reflectance, CastShadow = v.CastShadow }
-                        v.Material = Enum.Material.SmoothPlastic -- Эффект заливки краской
-                        v.Reflectance = 0
-                        v.CastShadow = false
+                        v.Material = Enum.Material.SmoothPlastic v.Reflectance = 0 v.CastShadow = false
                     end)
                 end
                 if v:IsA("SpecialMesh") then
-                    pcall(function() 
-                        originalSettings.Objects[v] = { TextureId = v.TextureId } 
-                        v.TextureId = "" -- Убираем картинку, оставляем базовый цвет меша
-                    end)
+                    pcall(function() originalSettings.Objects[v] = { TextureId = v.TextureId } v.TextureId = "" end)
                 end
                 if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
                     pcall(function() originalSettings.Objects[v] = { Enabled = v.Enabled } v.Enabled = false end)
@@ -687,23 +666,12 @@ function LoadMainGUI(guiScaleFactor)
                 if v:IsA("Decal") or v:IsA("Texture") then
                     pcall(function() originalSettings.Objects[v] = { Transparency = v.Transparency } v.Transparency = 1 end)
                 end
-                if v:IsA("Humanoid") then
-                    pcall(function()
-                        local animator = v:FindFirstChildOfClass("Animator")
-                        if animator then
-                            for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-                                originalSettings.Objects[track] = { Speed = track.Speed } track:AdjustSpeed(0)
-                            end
-                        end
-                    end)
-                end
             end
         else
             LowGfxToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
             LowGfxStroke.Color = Color3.fromRGB(150, 50, 50)
             LowGfxMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
             
-            -- Восстанавливаем свет
             pcall(function()
                 if originalSettings.Lighting.GlobalShadows ~= nil then Lighting.GlobalShadows = originalSettings.Lighting.GlobalShadows end
                 if originalSettings.Lighting.FogEnd ~= nil then Lighting.FogEnd = originalSettings.Lighting.FogEnd end
@@ -720,24 +688,267 @@ function LoadMainGUI(guiScaleFactor)
                 end)
             end
             
-            -- Восстанавливаем объекты
             for obj, props in pairs(originalSettings.Objects) do
-                if obj and obj.Parent or obj:IsA("AnimationTrack") then
-                    pcall(function()
-                        for propName, propValue in pairs(props) do
-                            if propName == "Speed" and obj:IsA("AnimationTrack") then 
-                                obj:AdjustSpeed(propValue) 
-                            else 
-                                obj[propName] = propValue 
-                            end
-                        end
-                    end)
+                if obj and obj.Parent then
+                    pcall(function() for propName, propValue in pairs(props) do obj[propName] = propValue end end)
                 end
             end
             originalSettings.Objects = {} originalSettings.Lighting = {} originalSettings.Terrain = {}
         end
     end
     LowGfxToggle.MouseButton1Click:Connect(toggleLowGraphics)
+
+    -- =============================================
+    -- === СЛОЖНАЯ ЛОГИКА ESP (BOX, SKELETON, CHAMS) ===
+    -- =============================================
+    local isESP = false
+    local espCache = {}
+    
+    -- Соединения костей для R15
+    local R15_Bones = {
+        {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"},
+        {"UpperTorso", "RightUpperArm"}, {"RightUpperArm", "RightLowerArm"}, {"RightLowerArm", "RightHand"},
+        {"UpperTorso", "LeftUpperArm"}, {"LeftUpperArm", "LeftLowerArm"}, {"LeftLowerArm", "LeftHand"},
+        {"LowerTorso", "RightUpperLeg"}, {"RightUpperLeg", "RightLowerLeg"}, {"RightLowerLeg", "RightFoot"},
+        {"LowerTorso", "LeftUpperLeg"}, {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"}
+    }
+    
+    -- Соединения костей для R6 (если игра старая)
+    local R6_Bones = {
+        {"Head", "Torso"},
+        {"Torso", "Right Arm"}, {"Torso", "Left Arm"},
+        {"Torso", "Right Leg"}, {"Torso", "Left Leg"}
+    }
+
+    local function getESPColor(health, maxHealth)
+        local hpFactor = math.clamp(health / maxHealth, 0, 1)
+        return Color3.new(1 - hpFactor, hpFactor, 0) -- От красного (0) к зеленому (1)
+    end
+
+    local function checkVisibility(targetPart)
+        local origin = Camera.CFrame.Position
+        local direction = targetPart.Position - origin
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+        raycastParams.IgnoreWater = true
+        local result = workspace:Raycast(origin, direction, raycastParams)
+        if result and result.Instance and not result.Instance:IsDescendantOf(targetPart.Parent) then
+            return false -- За стеной
+        end
+        return true -- Видим
+    end
+
+    local function createESPObj(player)
+        local obj = {
+            Box = Drawing.new("Square"),
+            Name = Drawing.new("Text"),
+            Dist = Drawing.new("Text"),
+            HP = Drawing.new("Text"),
+            Tracer = Drawing.new("Line"),
+            HeadDot = Drawing.new("Circle"),
+            SkeletonLines = {},
+            ChamsHighlight = Instance.new("Highlight")
+        }
+        
+        obj.Box.Thickness = 1.5
+        obj.Box.Filled = false
+        
+        obj.Name.Size = 14
+        obj.Name.Center = true
+        obj.Name.Outline = true
+        obj.Name.Color = Color3.new(1, 1, 1)
+        
+        obj.Dist.Size = 13
+        obj.Dist.Center = true
+        obj.Dist.Outline = true
+        obj.Dist.Color = Color3.fromRGB(150, 150, 255)
+        
+        obj.HP.Size = 13
+        obj.HP.Center = true
+        obj.HP.Outline = true
+        
+        obj.Tracer.Thickness = 1
+        
+        obj.HeadDot.Radius = 3
+        obj.HeadDot.Filled = true
+        obj.HeadDot.Color = Color3.new(1, 0, 0)
+        
+        for i = 1, 15 do
+            local line = Drawing.new("Line")
+            line.Thickness = 1.5
+            line.Color = Color3.new(0.5, 0.8, 1) -- Ярко-голубой
+            table.insert(obj.SkeletonLines, line)
+        end
+        
+        obj.ChamsHighlight.FillTransparency = 0.5
+        obj.ChamsHighlight.OutlineTransparency = 0.1
+        
+        espCache[player] = obj
+        return obj
+    end
+
+    local function updateESP()
+        if not isESP then return end
+        
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local char = player.Character
+                local hum = char and char:FindFirstChild("Humanoid")
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local head = char and char:FindFirstChild("Head")
+                
+                local obj = espCache[player] or createESPObj(player)
+                
+                if char and hum and hrp and head and hum.Health > 0 then
+                    local hrpPos, hrpOnScreen = Camera:WorldToViewportPoint(hrp.Position)
+                    
+                    if hrpOnScreen then
+                        local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                        local legPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                        
+                        local boxHeight = math.abs(headPos.Y - legPos.Y)
+                        local boxWidth = boxHeight * 0.6
+                        
+                        local hpColor = getESPColor(hum.Health, hum.MaxHealth)
+                        local isVisible = checkVisibility(head)
+                        local trans = isVisible and 1 or 0.5
+                        
+                        -- Box
+                        obj.Box.Size = Vector2.new(boxWidth, boxHeight)
+                        obj.Box.Position = Vector2.new(hrpPos.X - boxWidth / 2, headPos.Y)
+                        obj.Box.Color = hpColor
+                        obj.Box.Transparency = trans
+                        obj.Box.Visible = true
+                        
+                        -- Имя и Vehicle
+                        local nameTxt = player.Name
+                        if hum.SeatPart then nameTxt = nameTxt .. " [VEHICLE]" end
+                        obj.Name.Text = nameTxt
+                        obj.Name.Position = Vector2.new(hrpPos.X, headPos.Y - 16)
+                        obj.Name.Transparency = trans
+                        obj.Name.Visible = true
+                        
+                        -- Дистанция
+                        local dist = math.floor((Camera.CFrame.Position - hrp.Position).Magnitude)
+                        obj.Dist.Text = dist .. "m"
+                        obj.Dist.Position = Vector2.new(hrpPos.X, headPos.Y - 30)
+                        obj.Dist.Transparency = trans
+                        obj.Dist.Visible = true
+                        
+                        -- HP
+                        local hpPercent = math.floor((hum.Health / hum.MaxHealth) * 100)
+                        obj.HP.Text = hpPercent .. "%"
+                        obj.HP.Color = hpColor
+                        obj.HP.Position = Vector2.new(hrpPos.X + boxWidth / 2 + 5, headPos.Y + boxHeight - 15)
+                        obj.HP.Transparency = trans
+                        obj.HP.Visible = true
+                        
+                        -- Tracer
+                        obj.Tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                        obj.Tracer.To = Vector2.new(hrpPos.X, legPos.Y)
+                        obj.Tracer.Color = hpColor
+                        obj.Tracer.Transparency = trans
+                        obj.Tracer.Visible = true
+                        
+                        -- Head Dot
+                        local headPoint = Camera:WorldToViewportPoint(head.Position)
+                        obj.HeadDot.Position = Vector2.new(headPoint.X, headPoint.Y)
+                        obj.HeadDot.Transparency = trans
+                        obj.HeadDot.Visible = true
+                        
+                        -- Chams (Материал Neon + Highlight)
+                        if obj.ChamsHighlight.Parent ~= char then
+                            obj.ChamsHighlight.Parent = char
+                        end
+                        obj.ChamsHighlight.FillColor = hpColor
+                        obj.ChamsHighlight.OutlineColor = Color3.new(1,1,1)
+                        
+                        for _, part in ipairs(char:GetChildren()) do
+                            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                                if part.Material ~= Enum.Material.Neon then
+                                    part.Material = Enum.Material.Neon
+                                end
+                            end
+                        end
+                        
+                        -- Skeleton
+                        local isR15 = char:FindFirstChild("UpperTorso") ~= nil
+                        local bones = isR15 and R15_Bones or R6_Bones
+                        
+                        for i, line in ipairs(obj.SkeletonLines) do
+                            local bonePair = bones[i]
+                            if bonePair then
+                                local part1 = char:FindFirstChild(bonePair[1])
+                                local part2 = char:FindFirstChild(bonePair[2])
+                                
+                                if part1 and part2 then
+                                    local p1Pos, p1Vis = Camera:WorldToViewportPoint(part1.Position)
+                                    local p2Pos, p2Vis = Camera:WorldToViewportPoint(part2.Position)
+                                    
+                                    if p1Vis and p2Vis then
+                                        line.From = Vector2.new(p1Pos.X, p1Pos.Y)
+                                        line.To = Vector2.new(p2Pos.X, p2Pos.Y)
+                                        line.Transparency = trans
+                                        line.Visible = true
+                                    else
+                                        line.Visible = false
+                                    end
+                                else
+                                    line.Visible = false
+                                end
+                            else
+                                line.Visible = false
+                            end
+                        end
+                        
+                    else
+                        -- Игрок за экраном
+                        obj.Box.Visible = false obj.Name.Visible = false obj.Dist.Visible = false
+                        obj.HP.Visible = false obj.Tracer.Visible = false obj.HeadDot.Visible = false
+                        for _, line in ipairs(obj.SkeletonLines) do line.Visible = false end
+                        if obj.ChamsHighlight.Parent then obj.ChamsHighlight.Parent = nil end
+                    end
+                else
+                    -- Игрок мертв или нет персонажа
+                    if obj then
+                        obj.Box.Visible = false obj.Name.Visible = false obj.Dist.Visible = false
+                        obj.HP.Visible = false obj.Tracer.Visible = false obj.HeadDot.Visible = false
+                        for _, line in ipairs(obj.SkeletonLines) do line.Visible = false end
+                        if obj.ChamsHighlight.Parent then obj.ChamsHighlight.Parent = nil end
+                    end
+                end
+            end
+        end
+    end
+
+    _G.SonyaESP_Clear = function()
+        for _, obj in pairs(espCache) do
+            obj.Box:Remove() obj.Name:Remove() obj.Dist:Remove() obj.HP:Remove()
+            obj.Tracer:Remove() obj.HeadDot:Remove()
+            for _, line in ipairs(obj.SkeletonLines) do line:Remove() end
+            if obj.ChamsHighlight then obj.ChamsHighlight:Destroy() end
+        end
+        espCache = {}
+    end
+
+    local function toggleESP()
+        isESP = not isESP
+        if isESP then
+            ESPToggle.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            ESPStroke.Color = Color3.fromRGB(50, 150, 50)
+            ESPMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
+            _G.SonyaESP_Connection = RunService.RenderStepped:Connect(updateESP)
+        else
+            ESPToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+            ESPStroke.Color = Color3.fromRGB(150, 50, 50)
+            ESPMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+            if _G.SonyaESP_Connection then _G.SonyaESP_Connection:Disconnect() end
+            _G.SonyaESP_Clear()
+        end
+    end
+    ESPToggle.MouseButton1Click:Connect(toggleESP)
+
 
     -- === ОБРАБОТКА СЛАЙДЕРОВ ===
     local function setupSlider(sliderBtn, fill, label, minV, maxV, varName, prefix)
@@ -760,9 +971,7 @@ function LoadMainGUI(guiScaleFactor)
     setupSlider(SpeedSlider, SpeedFill, SpeedLabel, 16, 250, "walkSpeedMod", "WalkSpeed")
     setupSlider(SpinSlider, SpinFill, SpinLabel, 5, 100, "spinSpeedMod", "Скорость вращения")
 
-    -- =============================================
-    -- === ИСПРАВЛЕННЫЕ МОБИЛЬНЫЕ КНОПКИ ===
-    -- =============================================
+    -- === ОБРАБОТКА МОБИЛЬНЫХ КНОПОК ===
     local function makeMobileBtnDraggable(btn, actionFunc)
         local dragging = false
         local dragInput = nil
@@ -773,21 +982,16 @@ function LoadMainGUI(guiScaleFactor)
 
         btn.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = true
-                hasMoved = false
-                dragInput = input
-                dragStart = input.Position
-                startPos = btn.Position
-                holdTick = tick()
+                dragging = true hasMoved = false dragInput = input
+                dragStart = input.Position startPos = btn.Position holdTick = tick()
 
                 task.spawn(function()
                     while dragging and not hasMoved do
-                        -- Если удерживаем 1.5 секунды, переключаем блокировку позиции
                         if tick() - holdTick >= 1.5 then
                             isLocked = not isLocked
                             btn.BackgroundColor3 = isLocked and Color3.fromRGB(50, 50, 50) or Color3.fromRGB(15, 15, 15)
                             btn.BackgroundTransparency = isLocked and 0.7 or 0.3
-                            dragging = false -- Отменяем перетаскивание после блокировки
+                            dragging = false
                             break
                         end
                         task.wait(0.1)
@@ -797,12 +1001,9 @@ function LoadMainGUI(guiScaleFactor)
         end)
 
         UserInputService.InputChanged:Connect(function(input)
-            -- Обновляем позицию только если это тот же палец и кнопка не заблокирована
             if input == dragInput and dragging then
                 local delta = input.Position - dragStart
-                if delta.Magnitude > 10 then
-                    hasMoved = true
-                end
+                if delta.Magnitude > 10 then hasMoved = true end
                 if hasMoved and not isLocked then
                     btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
                 end
@@ -810,15 +1011,10 @@ function LoadMainGUI(guiScaleFactor)
         end)
 
         btn.InputEnded:Connect(function(input)
-            -- Выполняем функцию клика, только если отпустили ИМЕННО ЭТУ кнопку (лечит баг при беге)
             if input == dragInput then
                 dragging = false
                 if not hasMoved then
-                    local holdTime = tick() - holdTick
-                    -- Если отпустили быстро (< 1.5 сек), засчитываем как клик (даже если кнопка Locked)
-                    if holdTime < 1.5 then
-                        actionFunc()
-                    end
+                    if tick() - holdTick < 1.5 then actionFunc() end
                 end
             end
         end)
@@ -831,6 +1027,7 @@ function LoadMainGUI(guiScaleFactor)
     makeMobileBtnDraggable(ShiftLockMobileBtn, toggleShiftLock)
     makeMobileBtnDraggable(SpinMobileBtn, toggleSpin)
     makeMobileBtnDraggable(LowGfxMobileBtn, toggleLowGraphics)
+    makeMobileBtnDraggable(ESPMobileBtn, toggleESP)
 
     local function setupMobileShow(boolBtn, mobileBtn)
         local isShown = false
@@ -849,21 +1046,21 @@ function LoadMainGUI(guiScaleFactor)
     setupMobileShow(ShiftLockBoolBtn, ShiftLockMobileBtn)
     setupMobileShow(SpinBoolBtn, SpinMobileBtn)
     setupMobileShow(LowGfxBoolBtn, LowGfxMobileBtn)
+    setupMobileShow(ESPBoolBtn, ESPMobileBtn)
 
-    -- ===========================
     -- === БИНДЫ С КЛАВИАТУРЫ ===
-    -- ===========================
     local function setupBind(btn, keyName)
         btn.MouseButton1Click:Connect(function() btn.Text = "..." isBinding[keyName] = true end)
     end
     setupBind(FlyBindBtn, "Fly") setupBind(NoclipBindBtn, "Noclip") setupBind(SpeedBindBtn, "Speed") 
-    setupBind(SitBindBtn, "Sit") setupBind(ShiftLockBindBtn, "ShiftLock") setupBind(SpinBindBtn, "Spin") setupBind(LowGfxBindBtn, "LowGraphics")
+    setupBind(SitBindBtn, "Sit") setupBind(ShiftLockBindBtn, "ShiftLock") setupBind(SpinBindBtn, "Spin") 
+    setupBind(LowGfxBindBtn, "LowGraphics") setupBind(ESPBindBtn, "ESP")
 
     UserInputService.InputBegan:Connect(function(input, gp)
         if input.UserInputType == Enum.UserInputType.Keyboard then
             for keyName, binding in pairs(isBinding) do
                 if binding then
-                    local btnUI = keyName == "Fly" and FlyBindBtn or keyName == "Noclip" and NoclipBindBtn or keyName == "Speed" and SpeedBindBtn or keyName == "Sit" and SitBindBtn or keyName == "ShiftLock" and ShiftLockBindBtn or keyName == "Spin" and SpinBindBtn or LowGfxBindBtn
+                    local btnUI = keyName == "Fly" and FlyBindBtn or keyName == "Noclip" and NoclipBindBtn or keyName == "Speed" and SpeedBindBtn or keyName == "Sit" and SitBindBtn or keyName == "ShiftLock" and ShiftLockBindBtn or keyName == "Spin" and SpinBindBtn or keyName == "LowGraphics" and LowGfxBindBtn or ESPBindBtn
                     if input.KeyCode == Enum.KeyCode.Escape then
                         binds[keyName] = nil btnUI.Text = "[NONE]"
                     else
@@ -882,6 +1079,7 @@ function LoadMainGUI(guiScaleFactor)
             if binds.ShiftLock and input.KeyCode == binds.ShiftLock then toggleShiftLock() end
             if binds.Spin and input.KeyCode == binds.Spin then toggleSpin() end
             if binds.LowGraphics and input.KeyCode == binds.LowGraphics then toggleLowGraphics() end
+            if binds.ESP and input.KeyCode == binds.ESP then toggleESP() end
         end
     end)
 end
