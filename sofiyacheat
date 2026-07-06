@@ -8,7 +8,7 @@ local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-local guiName = "SonyaGUI_V10_Full_Aim"
+local guiName = "SonyaGUI_V10_Fixed_Aim"
 
 -- Определение родителя
 local parent = nil
@@ -25,6 +25,7 @@ for _, child in ipairs(parent:GetChildren()) do
     end
 end
 if _G.SonyaESP_Connection then _G.SonyaESP_Connection:Disconnect() end
+pcall(function() RunService:UnbindFromRenderStep("SonyaAimbotLoop") end)
 if _G.SonyaESP_Clear then _G.SonyaESP_Clear() end
 
 -- === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И НАСТРОЙКИ ===
@@ -38,18 +39,18 @@ local AimSettings = {
     Enabled = false,
     FOVVisible = false,
     FOVRadius = 150,
-    Smoothness = 0.2, -- Будет рассчитываться как SliderValue / 100
+    Smoothness = 0.2, 
     Prediction = true,
     PredictionAmount = 0.165,
     TargetParts = {"Head", "HumanoidRootPart", "UpperTorso", "LowerTorso"},
-    TeamCheck = true,
-    WallCheck = true
+    TeamCheck = false, -- Отключено по умолчанию для стабильности тестов
+    WallCheck = false  -- Отключено по умолчанию для стабильности тестов
 }
 
 -- Создание FOV круга через Drawing API
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Visible = false
-FOVCircle.Color = Color3.fromRGB(200, 200, 200)
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
 FOVCircle.Thickness = 1.5
 FOVCircle.Transparency = 0.8
 FOVCircle.Filled = false
@@ -64,7 +65,7 @@ end)
 -- ==========================================
 
 local BootGui = Instance.new("ScreenGui")
-BootGui.Name = guiName .. "_Boot"
+BootGui.Name = BootGui.Name or (guiName .. "_Boot")
 BootGui.Parent = parent
 BootGui.ResetOnSpawn = false
 
@@ -442,7 +443,6 @@ function LoadMainGUI(guiScaleFactor)
     local SpinToggle, SpinStroke, SpinBindBtn, SpinBoolBtn, SpinSlider, SpinFill, SpinLabel = createFeatureModule("Spin (Крутиться)", 11, true, 20, 5, 100, "Скорость вращения")
     local LowGfxToggle, LowGfxStroke, LowGfxBindBtn, LowGfxBoolBtn = createFeatureModule("Low Graphics (FPS+)", 13, false)
     local ESPToggle, ESPStroke, ESPBindBtn, ESPBoolBtn = createFeatureModule("ESP (ВХ + Инфо + Скелет)", 15, false)
-    -- Новые модули Аимбота и FOV
     local AimbotToggle, AimbotStroke, AimbotBindBtn, AimbotBoolBtn, AimbotSlider, AimbotFill, AimbotLabel = createFeatureModule("Aimbot (Наводка ПКМ)", 17, true, 20, 1, 100, "Плавность")
     local FOVToggle, FOVStroke, FOVBindBtn, FOVBoolBtn, FOVSlider, FOVFill, FOVLabel = createFeatureModule("Aimbot FOV (Круг)", 19, true, 150, 50, 500, "Радиус")
 
@@ -463,7 +463,12 @@ function LoadMainGUI(guiScaleFactor)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
     end)
 
-    CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() FOVCircle:Remove() if _G.SonyaESP_Clear then _G.SonyaESP_Clear() end end)
+    CloseBtn.MouseButton1Click:Connect(function() 
+        ScreenGui:Destroy() 
+        FOVCircle:Remove() 
+        pcall(function() RunService:UnbindFromRenderStep("SonyaAimbotLoop") end)
+        if _G.SonyaESP_Clear then _G.SonyaESP_Clear() end 
+    end)
     MinBtn.MouseButton1Click:Connect(function() MainWindow.Visible = false RestoreBtn.Visible = true end)
     RestoreBtn.MouseButton1Click:Connect(function() MainWindow.Visible = true RestoreBtn.Visible = false end)
     local isFullscreen = false
@@ -849,7 +854,7 @@ function LoadMainGUI(guiScaleFactor)
                         obj.Box.Transparency = trans
                         obj.Box.Visible = true
                         
-                        -- Имя и Vehicle
+                        -- Имя
                         local nameTxt = player.Name
                         if hum.SeatPart then nameTxt = nameTxt .. " [VEHICLE]" end
                         obj.Name.Text = nameTxt
@@ -975,7 +980,7 @@ function LoadMainGUI(guiScaleFactor)
     ESPToggle.MouseButton1Click:Connect(toggleESP)
 
     -- ============================================
-    -- === НОВАЯ ЛОГИКА АИМБОТА И РАБОТЫ С FOV ===
+    -- === ИСПРАВЛЕННАЯ НАДЁЖНАЯ ЛОГИКА АИМБОТА ===
     -- ============================================
     local isAiming = false
     
@@ -1045,10 +1050,14 @@ function LoadMainGUI(guiScaleFactor)
         return closestTarget
     end
 
-    RunService.RenderStepped:Connect(function()
+    -- Форсируем перехват управления камерой через правильный приоритет BindToRenderStep
+    RunService:BindToRenderStep("SonyaAimbotLoop", Enum.RenderPriority.Camera.Value + 1, function()
         FOVCircle.Radius = AimSettings.FOVRadius
         
-        if AimSettings.Enabled and isAiming then
+        -- Если это ПК — наводимся при зажатом ПКМ. Если это мобилка — наводимся автоматически, когда Aim включен
+        local condition = AimSettings.Enabled and (isAiming or UserInputService.TouchEnabled)
+        
+        if condition then
             local target = getClosestTarget()
             if target then
                 local aimPosition = target.Position
@@ -1168,7 +1177,7 @@ function LoadMainGUI(guiScaleFactor)
     setupMobileShow(LowGfxBoolBtn, LowGfxMobileBtn)
     setupMobileShow(ESPBoolBtn, ESPMobileBtn)
     setupMobileShow(AimbotBoolBtn, AimbotMobileBtn)
-    setupMobileShow(FOVBoolBtn, Instance.new("Frame")) -- Заглушка, чтобы не падало, так как для FOV кнопка на экране не требуется
+    setupMobileShow(FOVBoolBtn, Instance.new("Frame"))
 
     -- === БИНДЫ С КЛАВИАТУРЫ ===
     local function setupBind(btn, keyName)
