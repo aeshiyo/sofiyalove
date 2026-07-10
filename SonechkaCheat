@@ -917,24 +917,21 @@ function LoadMainGUI(guiScaleFactor)
             InfSlideStroke.Color = Color3.fromRGB(50, 150, 50)
             InfSlideMobileBtn.BackgroundColor3 = Color3.fromRGB(10, 30, 10)
             
-            task.spawn(function()
-                while isInfSlide do
-                    local loopSuccess, loopError = pcall(function()
-                        -- Нажать Space
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-                        task.wait(0.21035)
-                        
-                        -- Нажать Ctrl
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
-                        task.wait(0.5)
-                        
-                        -- Отпустить клавиши
-                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
-                    end)
-                    if not loopSuccess then task.wait(0.5) end
-                end
-            end)
+           task.spawn(function()
+        while isInfSlide do
+            -- Сначала нажимаем LeftControl
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
+            task.wait(0.5) -- Время удержания Ctrl
+            
+            -- Затем нажимаем Space
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+            task.wait(0.21035) -- Время удержания Space
+            
+            -- Отпускаем обе клавиши
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+        end
+    end)
         else
             InfSlideToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
             InfSlideStroke.Color = Color3.fromRGB(150, 50, 50)
