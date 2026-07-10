@@ -1,9 +1,3 @@
-warn("--- SONYA HUB: LOADING STARTED ---")
--- =================================================================
--- [+] PROJECT: sonyahub
--- [+] SCRIPT: Sonya<3 
--- [+] AUTHOR: un<red (Henry One / aeshiyoo )
--- =================================================================
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
