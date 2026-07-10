@@ -908,7 +908,7 @@ function LoadMainGUI(guiScaleFactor)
     end
     AimToggle.MouseButton1Click:Connect(toggleAimbot)
     local isInfSlide = false
-    local function toggleInfSlide()
+ local function toggleInfSlide()
         isInfSlide = not isInfSlide
         local VirtualInputManager = game:GetService("VirtualInputManager")
         
@@ -919,30 +919,33 @@ function LoadMainGUI(guiScaleFactor)
             
             task.spawn(function()
                 while isInfSlide do
-                    task.wait(0.05)
                     local loopSuccess, loopError = pcall(function()
-                        if not LocalPlayer then return end
-                        local char = LocalPlayer.Character
-                        if not char then return end
+                        -- Нажать Space
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                        task.wait(0.21035)
                         
-                        local hum = char:FindFirstChildOfClass("Humanoid")
-                        local root = char:FindFirstChild("HumanoidRootPart")
+                        -- Нажать Ctrl
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
+                        task.wait(0.21035)
                         
-                        if hum and root and hum.Health > 0 then
-                            if root.AssemblyLinearVelocity.Magnitude > 2 then
-                                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
-                                task.wait(0.08)
-                                
-                                if hum and hum.Parent and hum.Health > 0 then
-                                    hum.Jump = true
-                                end
-                                task.wait(0.12)
-                                
-                                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
-                                task.wait(0.05)
-                            end
-                        end
+                        -- Отпустить клавиши
+                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
                     end)
+                    if not loopSuccess then task.wait(0.5) end
+                end
+            end)
+        else
+            InfSlideToggle.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+            InfSlideStroke.Color = Color3.fromRGB(150, 50, 50)
+            InfSlideMobileBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+            
+            pcall(function()
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game)
+            end)
+        end
+    end
                     if not loopSuccess then task.wait(0.5) end
                 end
                 
