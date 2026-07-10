@@ -1,13 +1,15 @@
-local _void = nil
-local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
+do
+    local _void = nil
+    local CoreGui = game:GetService("CoreGui")
+    local TweenService = game:GetService("TweenService")
+    local Players = game:GetService("Players")
+    local UserInputService = game:GetService("UserInputService")
+    local RunService = game:GetService("RunService")
+    local Lighting = game:GetService("Lighting")
 
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+    local LocalPlayer = Players.LocalPlayer
+    local Camera = workspace.CurrentCamera
+end
 
 local guiName = "SonyaGUI_V9_ESP_AIM"
 
