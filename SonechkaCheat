@@ -926,7 +926,7 @@ function LoadMainGUI(guiScaleFactor)
                         
                         -- Нажать Ctrl
                         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game)
-                        task.wait(0.21035)
+                        task.wait(0.5)
                         
                         -- Отпустить клавиши
                         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
